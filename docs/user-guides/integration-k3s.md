@@ -78,7 +78,7 @@ ecp describe-cluster my-k3s
 A single script installs all three components (auth-proxy, webhook, pod-identity-agent):
 
 ```bash
-curl -sL https://github.com/plasticity-of-cloud/express-compute/releases/latest/download/install-ecp-pod-identity.sh \
+curl -sL https://github.com/codriverlabs/express-compute/releases/latest/download/install-ecp-pod-identity.sh \
   | CLUSTER_NAME=my-k3s AWS_REGION=us-east-1 ECP_ENDPOINT=${ENDPOINT} bash
 ```
 

@@ -149,7 +149,7 @@ ecp create-association \
 A single script installs cert-manager, ecp-auth-proxy, ecp-workload-identity-webhook, and eks-pod-identity-agent:
 
 ```bash
-curl -sL https://github.com/plasticity-of-cloud/express-compute/releases/latest/download/install-ecp-pod-identity.sh \
+curl -sL https://github.com/codriverlabs/express-compute/releases/latest/download/install-ecp-pod-identity.sh \
   | CLUSTER_NAME=my-k3s AWS_REGION=us-east-1 ECP_ENDPOINT=https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/prod bash
 ```
 

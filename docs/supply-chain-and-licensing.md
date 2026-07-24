@@ -124,7 +124,7 @@ sha256sum -c checksums.sha256
 Future releases will include cosign signatures for container images:
 
 ```bash
-cosign verify ghcr.io/plasticity-of-cloud/express-compute-auth-proxy:1.0.3
+cosign verify ghcr.io/codriverlabs/express-compute-auth-proxy:1.0.3
 ```
 
 ---
