@@ -151,7 +151,7 @@ fi
 # 5b. Karpenter support (EC2NodeClass webhook + ValidationSucceeded controller)
 if should_build "karpenter"; then
   echo "--- karpenter-support"
-  ensure_ecr_repo "plasticity-of-cloud/express-compute-karpenter-support"
+  ensure_ecr_repo "codriverlabs/express-compute-karpenter-support"
   if $NATIVE; then
     mvn -B -pl ecp-karpenter-support clean package $SKIP_FLAG -Pnative $(image_flags) \
       -Dquarkus.helm.version=${IMAGE_TAG}

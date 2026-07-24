@@ -176,7 +176,7 @@ if [[ -n "$ECP_VERSION" ]]; then
     -n cert-manager --timeout=120s
 
   # Run the canonical install script released alongside this version
-  curl -sL "https://github.com/plasticity-of-cloud/express-compute-control-plane/releases/download/v${ECP_VERSION}/install-ecp-pod-identity-${ECP_VERSION}.sh" \
+  curl -sL "https://github.com/codriverlabs/express-compute-control-plane/releases/download/v${ECP_VERSION}/install-ecp-pod-identity-${ECP_VERSION}.sh" \
     | ECP_ENDPOINT="${ECP_ENDPOINT}" \
       CLUSTER_NAME="${CLUSTER_NAME}" \
       AWS_REGION="${REGION}" \

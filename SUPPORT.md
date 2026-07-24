@@ -2,8 +2,8 @@
 
 ## Community
 
-- **GitHub Issues**: [Report bugs and request features](https://github.com/plasticity-of-cloud/express-compute-control-plane/issues)
-- **Discussions**: [Ask questions and share ideas](https://github.com/plasticity-of-cloud/express-compute-control-plane/discussions)
+- **GitHub Issues**: [Report bugs and request features](https://github.com/codriverlabs/express-compute-control-plane/issues)
+- **Discussions**: [Ask questions and share ideas](https://github.com/codriverlabs/express-compute-control-plane/discussions)
 - **Email**: ecosystem@plasticity.cloud
 
 ## Feedback
