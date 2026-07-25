@@ -14,6 +14,27 @@ updates:
       aws-cdk:
         patterns: ["software.amazon.awscdk*"]
 
+  - package-ecosystem: docker
+    directory: /ecp-auth-proxy/src/main/docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker
+    directory: /ecp-workload-identity-webhook/src/main/docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: docker
+    directory: /ecp-karpenter-support/src/main/docker
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
