@@ -68,8 +68,8 @@ mvn test -Dintegration.dynamodb=true
 ## Tenant Lifecycle
 
 ```bash
-./create_tenant.sh <tenant-id>   # Provision EKS-D cluster (streams progress via SSE)
-./delete_tenant.sh <tenant-id>   # Deprovision and wait for completion
+./create-cluster.sh <tenant-id>   # Provision EKS-D cluster (streams progress via SSE)
+./delete-cluster.sh <tenant-id>   # Deprovision and wait for completion
 ```
 
 SSH key is stored in Secrets Manager at `express-compute/tenant/<id>/ssh-key` and saved locally to `~/.express-compute/tenants/<region>/<id>.pem` on successful provisioning.

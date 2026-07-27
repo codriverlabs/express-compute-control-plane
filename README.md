@@ -112,6 +112,7 @@ GET    /tenants/{id}/stream    # SSE progress (Function URL)
 │       └── TenantDlmService            # Etcd backup policy
 ├── ecp-auth-proxy/           # In-cluster proxy (TokenReview + forwarding)
 ├── ecp-workload-identity-webhook/ # Admission webhook (env + volume injection)
+├── ecp-karpenter-support/    # EC2NodeClass webhook + ValidationSucceeded reconciler
 ├── ecp-cli/                  # Native CLI (output: ecp binary)
 ├── ecp-model/                # Shared TokenClaims record
 └── infra/                       # CDK stack (Java, primary deployment path)
