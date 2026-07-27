@@ -162,13 +162,10 @@ cosign verify ghcr.io/codriverlabs/express-compute-auth-proxy:1.0.3
 
 ## For Enterprise Customers
 
-ELv2 allows you to:
-- ✓ Use in production (any scale)
-- ✓ Modify and create derivative works
-- ✓ Bundle with your own products
-- ✓ Use internally without restriction
+ELv2 is a source-available license. The key restriction is:
 
-ELv2 does **not** allow:
-- ✗ Offering Express Compute as a hosted/managed service to third parties
+- ✗ You may **not** provide Express Compute (or a derivative) as a hosted/managed service to third parties
 
 For managed service rights or custom licensing: support@codriverlabs.ai
+
+See [LICENSE.md](../LICENSE.md) for the complete license text.
