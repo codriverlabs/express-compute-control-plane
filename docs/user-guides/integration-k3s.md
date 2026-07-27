@@ -50,7 +50,7 @@ From your local machine (with `~/.kube/config` pointing at the k3s cluster):
 ecp configure --endpoint $ENDPOINT --region us-east-1
 
 # Register — auto-discovers issuer + JWKS from the kube-apiserver
-ecp create-cluster --name my-k3s --oidc-mode self-managed
+ecp create-cluster my-k3s --kubeconfig ~/.kube/config
 ```
 
 Or manually if auto-discovery doesn't work (e.g. kube-apiserver not reachable from your machine):
@@ -60,7 +60,7 @@ Or manually if auto-discovery doesn't work (e.g. kube-apiserver not reachable fr
 kubectl get --raw /openid/v1/jwks > /tmp/jwks.json
 
 # From your machine
-ecp create-cluster --name my-k3s --oidc-mode self-managed \
+ecp create-cluster my-k3s \
   --issuer https://<PUBLIC_IP> \
   --jwks-file /tmp/jwks.json
 ```
@@ -152,6 +152,6 @@ kubectl logs aws-test -n my-app
 
 **JWT validation fails:** the issuer in DynamoDB doesn't match the `iss` claim in the SA token. Re-register with the correct `--issuer`.
 
-**No association found:** the pod's `namespace/serviceAccount` doesn't match any registered association. Run `ecp list-associations --cluster my-k3s`.
+**No association found:** the pod's `namespace/serviceAccount` doesn't match any registered association. Run `ecp list-associations --cluster-name my-k3s`.
 
 **Proxy token rejected:** the proxy's projected SA token audience doesn't match `ecp.codriverlabs.ai`. Check the volume spec in the proxy deployment.

@@ -6,13 +6,13 @@ registered with ecp. There is no pre-provisioned signing key in Secrets Manager.
 
 > **Note:** This means the SA signing key is not backed up. If the instance is terminated
 > and reprovisioned, a new key is generated and the cluster must be re-registered
-> (`ecp create-cluster --oidc-mode self-managed` again with the new JWKS). For production use with key persistence,
+> (`ecp create-cluster <name> --jwks-file <path> --issuer <url>` again with the new JWKS). For production use with key persistence,
 > see [integration-express-compute.md](integration-express-compute.md).
 
 ## Prerequisites
 
 - AWS account with CDK stack deployed (see [deployment.md](deployment.md))
-- Terraform infra applied (VPC, subnets, Launch Template, AMI — see `infra/`)
+- Shared infra applied (VPC, subnets, Launch Template, AMI — see `infra/`)
 - `ecp` CLI installed
 - `ENDPOINT` env var set to your API Gateway URL
 
@@ -54,7 +54,7 @@ The AMI's first-boot script runs as `ec2-user`:
 1. Runs `kubeadm init --service-account-issuer https://{publicIp}`
    — kubeadm generates its own SA signing key at `/etc/kubernetes/pki/sa.key`
 2. Derives JWKS from `/etc/kubernetes/pki/sa.pub`
-3. Calls `ecp create-cluster --oidc-mode self-managed {tenantId} --issuer https://{publicIp} --jwks-file /tmp/jwks.json`
+3. Calls `ecp create-cluster {tenantId} --issuer https://{publicIp} --jwks-file /tmp/jwks.json`
    — authenticated via the instance profile IAM role, scoped to `POST /clusters/{tenantId}` only
 4. Installs `ecp-auth-proxy` and `ecp-workload-identity-webhook` via Helm (images pre-baked in AMI)
 5. Updates DynamoDB state to `ready`
