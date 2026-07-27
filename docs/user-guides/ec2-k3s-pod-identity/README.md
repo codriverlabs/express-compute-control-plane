@@ -109,10 +109,10 @@ export KUBECONFIG=/tmp/my-k3s-kubeconfig.yaml
 ecp configure --endpoint https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/prod --region us-east-1
 
 # Register cluster (auto-reads JWKS + OIDC issuer from kubeconfig)
-ecp create-cluster --oidc-mode self-managed --name my-k3s --region us-east-1
+ecp create-cluster my-k3s --kubeconfig ~/.kube/config
 
 # Verify
-ecp describe-cluster --name my-k3s
+ecp describe-cluster my-k3s
 ```
 
 ### 4. Create Workload Identity Associations
@@ -188,7 +188,7 @@ Expected:
 | Agent can't reach proxy | `kubectl logs -n kube-system -l app.kubernetes.io/name=eks-pod-identity-agent` |
 | Agent not scheduled | Ensure `--set "affinity="` was passed to Helm |
 | TokenReview fails | Proxy SA needs `tokenreviews` create permission |
-| Lambda returns 400 | `ecp describe-cluster --name my-k3s` — verify cluster is registered |
+| Lambda returns 400 | `ecp describe-cluster my-k3s` — verify cluster is registered |
 | No association found | `ecp list-associations --cluster-name my-k3s` |
 | STS AssumeRole fails | Target role must trust the Lambda execution role |
 | Webhook not mutating | `kubectl get mutatingwebhookconfigurations` |
@@ -205,7 +205,7 @@ kubectl delete -f https://github.com/cert-manager/cert-manager/releases/latest/d
 
 # Associations + cluster
 ecp delete-association --cluster-name my-k3s --association-id <id>
-ecp delete-cluster --name my-k3s
+ecp delete-cluster my-k3s
 
 # EC2
 aws ec2 terminate-instances --instance-ids <instance-id>

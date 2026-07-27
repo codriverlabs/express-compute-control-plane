@@ -130,13 +130,13 @@ The cluster's OIDC issuer and JWKS must be registered once. The CLI auto-discove
 ecp configure --endpoint $ENDPOINT --region us-east-1
 
 # Auto-discovers issuer + JWKS from /.well-known/openid-configuration
-ecp create-cluster --oidc-mode self-managed --name my-cluster
+ecp create-cluster my-cluster --kubeconfig ~/.kube/config
 ```
 
 Or explicitly:
 
 ```bash
-ecp create-cluster --oidc-mode self-managed --name my-cluster \
+ecp create-cluster my-cluster \
   --issuer https://<public-ip-or-domain> \
   --jwks-file /tmp/jwks.json
 ```
@@ -205,7 +205,7 @@ k3s exposes the OIDC discovery endpoint on the kube-apiserver. The issuer is typ
 # On the k3s node — extract JWKS
 kubectl get --raw /openid/v1/jwks > /tmp/jwks.json
 
-ecp create-cluster --oidc-mode self-managed --name my-k3s \
+ecp create-cluster my-k3s \
   --issuer https://<node-public-ip> \
   --jwks-file /tmp/jwks.json
 ```
@@ -214,7 +214,7 @@ The auth-proxy needs to reach the kube-apiserver for TokenReview. In k3s this wo
 
 ### Express Compute
 
-Express Compute clusters are provisioned via `ecp create-cluster --name`, which:
+Express Compute clusters are provisioned via `ecp create-cluster <name>`, which:
 1. Launches an EC2 instance with kubeadm
 2. Pre-registers the SA signing key in Secrets Manager
 3. Runs `kubeadm init` with `--service-account-issuer https://<public-ip>`
@@ -269,5 +269,5 @@ cd infra && cdk destroy ExpressComputeControlPlaneStack
 
 For tenant clusters:
 ```bash
-ecp delete-cluster --name acme-staging   # terminates EC2, removes secrets, deregisters cluster
+ecp delete-cluster acme-staging   # terminates EC2, removes secrets, deregisters cluster
 ```

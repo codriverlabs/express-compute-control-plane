@@ -10,7 +10,7 @@
 
 ### CLI Command Style
 
-- Flat AWS CLI-style: `ecp <verb-noun>` (e.g., `ecp register-cluster`, `ecp create-association`)
+- Flat AWS CLI-style: `ecp <verb-noun>` (e.g., `ecp create-cluster`, `ecp create-association`)
 - No nested verb/noun commands (removed in v2.2.0)
 
 ## Prerequisites
@@ -145,8 +145,8 @@ The tenant-service and CLI support GraalVM native compilation. The target archit
 ## Tenant Management Scripts
 
 ```bash
-./create_tenant.sh <tenant-id>    # Provision tenant cluster (--wait streams progress)
-./delete_tenant.sh <tenant-id>    # Deprovision tenant cluster (--wait polls until gone)
+./create-cluster.sh <tenant-id>    # Provision tenant cluster (--wait streams progress)
+./delete-cluster.sh <tenant-id>    # Deprovision tenant cluster (--wait polls until gone)
 ```
 
 DynamoDB integration tests require DynamoDB Local:
@@ -212,7 +212,7 @@ aws logs tail /aws/lambda/express-compute-mgmt-service --follow --region us-east
 | `cannot execute binary file` | Architecture mismatch (built x86, deployed arm64) | Align `--native` host arch with CDK context |
 | `NoSuchElementException: null` | Resource lookup returned empty (e.g., missing route table) | Verify shared infra resources exist with expected tags |
 | Quarkus config warning about `quarkus.native.*` | Running in JVM mode, native props ignored | Safe to ignore |
-| `create_tenant.sh` exits immediately with no output | Stream Lambda returns 500 — check logs for `MismatchedInputException` on `ApiGatewayAuthorizerContext.iam` | Ensure `quarkus.lambda-http.enable-security=false` is set in tenant-service `application.properties` |
+| `create-cluster.sh` exits immediately with no output | Stream Lambda returns 500 — check logs for `MismatchedInputException` on `ApiGatewayAuthorizerContext.iam` | Ensure `quarkus.lambda-http.enable-security=false` is set in tenant-service `application.properties` |
 | Tenant EC2 instance has no public IP | `--eip` not passed and EIP allocation failed | EIP is now always allocated; redeploy tenant-service if using old build |
 | Boot script stalls silently after "EKS-D Cluster Setup" | Instance had no internet at boot (no EIP) — first `aws` CLI call timed out | Fixed by always allocating EIP; re-run setup script manually if needed |
 

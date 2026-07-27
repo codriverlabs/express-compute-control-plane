@@ -75,7 +75,7 @@ if [[ -n "$CLI" ]]; then
     done
 
   log "Deregistering cluster $CLUSTER_NAME ..."
-  $CLI delete cluster --name "$CLUSTER_NAME" 2>/dev/null && \
+  $CLI delete-cluster "$CLUSTER_NAME" 2>/dev/null && \
     log "  Cluster deregistered" || warn "  Cluster not found or already deleted"
 else
   warn "ecp CLI not found — skipping ECP deregistration (do it manually)"

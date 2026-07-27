@@ -203,7 +203,7 @@ ${GREEN}════════════════════════
   1. Register the cluster:
        export KUBECONFIG=$KUBECONFIG_PATH
        ecp configure --endpoint ${ECP_ENDPOINT} --region ${REGION}
-       ecp create-cluster --oidc-mode self-managed --name ${CLUSTER_NAME} --region ${REGION}
+       ecp create-cluster ${CLUSTER_NAME} --kubeconfig $KUBECONFIG_PATH
 
   2. Create associations:
        ecp create-association \\

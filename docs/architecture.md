@@ -104,7 +104,7 @@ sequenceDiagram
     participant Lambda as mgmt-service
     participant DDB as DynamoDB (ecp-clusters)
 
-    User->>CLI: ecp register-cluster --name my-k3s --region us-east-1
+    User->>CLI: ecp create-cluster my-k3s --kubeconfig ~/.kube/config
     CLI->>K8s: GET /openid/v1/jwks
     K8s-->>CLI: JWKS JSON (public keys)
     CLI->>K8s: GET /.well-known/openid-configuration
@@ -118,7 +118,7 @@ sequenceDiagram
     DDB-->>Lambda: OK
     Lambda-->>GW: 201 Created
     GW-->>CLI: Response
-    CLI-->>User: ✓ Cluster "my-k3s" registered
+    CLI-->>User: ✓ Cluster "my-k3s" registered (self-managed)
 ```
 
 ## 4. Workload Identity Association Management
@@ -304,19 +304,18 @@ graph LR
 graph TD
     ECP["ecp"]
     ECP --> CONFIGURE["configure"]
-    ECP --> RC["register-cluster"]
-    ECP --> DRC["deregister-cluster"]
-    ECP --> DC["describe-cluster"]
+    ECP --> CC["create-cluster"]
+    ECP --> DC["delete-cluster"]
+    ECP --> DESC["describe-cluster"]
     ECP --> LC["list-clusters"]
     ECP --> UC["update-cluster"]
+    ECP --> SC["stop-cluster"]
+    ECP --> RC["resume-cluster"]
+    ECP --> GCA["get-cluster-access"]
     ECP --> CA["create-association"]
     ECP --> DA["delete-association"]
     ECP --> DSA["describe-association"]
     ECP --> LA["list-associations"]
-    ECP --> CT["create-tenant"]
-    ECP --> DT["delete-tenant"]
-    ECP --> ST["stop-tenant"]
-    ECP --> RT["resume-tenant"]
 ```
 
 ## 10. Deployment Topology
