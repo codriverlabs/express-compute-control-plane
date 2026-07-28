@@ -5,18 +5,21 @@
 #   ./destroy-local.sh                  # destroy with confirmation prompt
 #   ./destroy-local.sh --force          # skip confirmation
 #   ./destroy-local.sh --profile <name> # AWS profile to use
+#   ./destroy-local.sh --region <name>  # AWS region to target
 #
 set -euo pipefail
 
 FORCE=false
 AWS_PROFILE_ARG=""
+REGION_ARG=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --force)   FORCE=true ;;
     --profile) AWS_PROFILE_ARG="--profile $2"; shift ;;
+    --region)  REGION_ARG="--region $2"; shift ;;
     --help)
-      echo "Usage: ./destroy-local.sh [--force] [--profile <name>]"
+      echo "Usage: ./destroy-local.sh [--force] [--profile <name>] [--region <name>]"
       exit 0
       ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
@@ -31,6 +34,6 @@ fi
 
 echo "==> Destroying CDK stack"
 cd infra
-cdk destroy ExpressComputeControlPlaneStack --force $AWS_PROFILE_ARG
+cdk destroy ExpressComputeControlPlaneStack --force $AWS_PROFILE_ARG $REGION_ARG
 
 echo "==> Stack destroyed"
