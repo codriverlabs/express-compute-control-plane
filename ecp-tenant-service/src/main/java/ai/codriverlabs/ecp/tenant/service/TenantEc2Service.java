@@ -1,5 +1,6 @@
 package ai.codriverlabs.ecp.tenant.service;
 
+import ai.codriverlabs.ecp.tenant.InfraNaming;
 import ai.codriverlabs.ecp.tenant.TenantNaming;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jboss.logging.Logger;
@@ -42,7 +43,7 @@ public class TenantEc2Service {
                                    TenantProvisioningService.ProvisionedResources created) {
 
         String amiId = ssm.getParameter(GetParameterRequest.builder()
-            .name("/express-compute/infra/ami/" + arch + "/" + k8sVersion)
+            .name(InfraNaming.ssmAmiPath(arch, k8sVersion))
             .build()).parameter().value();
 
         String userData = Base64.getEncoder().encodeToString(userDataScript(
@@ -77,7 +78,7 @@ public class TenantEc2Service {
                     Tag.builder().key("ecp-tenant").value(tenantId).build(),
                     Tag.builder().key("kubernetes.io/cluster/" + clusterName).value("owned").build(),
                     Tag.builder().key("ebs.csi.aws.com/cluster-name").value(clusterName).build(),
-                    Tag.builder().key("Platform").value("express-compute").build())
+                    Tag.builder().key(InfraNaming.PLATFORM_TAG_KEY).value(InfraNaming.PLATFORM_TAG_VALUE).build())
                 .build())
             .build();
 
@@ -108,7 +109,7 @@ public class TenantEc2Service {
                 .tags(Tag.builder().key("Name").value(clusterName).build(),
                       Tag.builder().key("ecp-tenant").value(tenantId).build(),
                       Tag.builder().key("ecp-eip-persistent").value(String.valueOf(assignElasticIp)).build(),
-                      Tag.builder().key("project").value("express-compute").build())
+                      Tag.builder().key(InfraNaming.PLATFORM_TAG_KEY).value(InfraNaming.PLATFORM_TAG_VALUE).build())
                 .build())
             .build());
         if (created != null) created.eipAllocationId = allocResp.allocationId();

@@ -1,5 +1,6 @@
 package ai.codriverlabs.ecp.tenant.service;
 
+import ai.codriverlabs.ecp.tenant.InfraNaming;
 import ai.codriverlabs.ecp.tenant.TenantNaming;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -80,7 +81,7 @@ public class TenantDlmService {
             .tags(java.util.Map.of(
                 "ecp-tenant", tenantId,
                 "ecp-cluster", clusterName,
-                "Platform", "express-compute"))
+                InfraNaming.PLATFORM_TAG_KEY, InfraNaming.PLATFORM_TAG_VALUE))
             .policyDetails(PolicyDetails.builder()
                 .resourceTypes(ResourceTypeValues.VOLUME)
                 .targetTags(List.of(
@@ -97,7 +98,7 @@ public class TenantDlmService {
                     .tagsToAdd(List.of(
                         Tag.builder().key("SnapshotCreator").value("DLM").build(),
                         Tag.builder().key("ecp-tenant").value(tenantId).build(),
-                        Tag.builder().key("Platform").value("express-compute").build()))
+                        Tag.builder().key(InfraNaming.PLATFORM_TAG_KEY).value(InfraNaming.PLATFORM_TAG_VALUE).build()))
                     .build()))
                 .build())
             .build()).policyId();
@@ -146,7 +147,7 @@ public class TenantDlmService {
                 .ownerIds("self")
                 .filters(
                     Filter.builder().name("tag:ecp-tenant").values(tenantId).build(),
-                    Filter.builder().name("tag:Platform").values("express-compute").build())
+                    Filter.builder().name("tag:" + InfraNaming.PLATFORM_TAG_KEY).values(InfraNaming.PLATFORM_TAG_VALUE).build())
                 .build()).snapshots();
             for (Snapshot snap : snapshots) {
                 ec2.deleteSnapshot(DeleteSnapshotRequest.builder().snapshotId(snap.snapshotId()).build());

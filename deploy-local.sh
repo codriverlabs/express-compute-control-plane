@@ -14,6 +14,7 @@ SKIP_BUILD=false
 NATIVE=false
 AWS_PROFILE_ARG=""
 CDK_CONTEXT_ARGS=""
+DEPLOY_REGION=""
 
 # Auto-detect host architecture for native builds
 HOST_ARCH=$(uname -m)
@@ -32,7 +33,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --skip-build         Skip Maven build and reuse existing Lambda zips"
       echo "  --native             Build GraalVM native tenant-service before deploying"
       echo "  --profile <name>     AWS CLI profile to use for CDK deployment"
-      echo "  --context key=val    Extra CDK context variable (repeatable)"
+      echo "  --context key=val    Extra CDK context variable (repeatable, -c shorthand)"
+      echo "  --region <name>      AWS region to deploy to"
       echo "  --help               Show this help message"
       echo ""
       echo "Examples:"
@@ -48,7 +50,12 @@ while [[ $# -gt 0 ]]; do
     --skip-build) SKIP_BUILD=true ;;
     --native)     NATIVE=true ;;
     --profile)    AWS_PROFILE_ARG="--profile $2"; shift ;;
-    --context)    CDK_CONTEXT_ARGS="$CDK_CONTEXT_ARGS -c $2"; shift ;;
+    --context|-c) CDK_CONTEXT_ARGS="$CDK_CONTEXT_ARGS -c $2"; shift ;;
+    --region)
+      DEPLOY_REGION="$2"
+      CDK_CONTEXT_ARGS="$CDK_CONTEXT_ARGS -c region=$2"
+      shift
+      ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
   shift
@@ -71,6 +78,13 @@ if ! $SKIP_BUILD; then
 fi
 
 echo "==> Deploying CDK stack"
+# If --region was specified, resolve account ID and pass both to CDK
+# (InfraApp.java requires both account + region to set the stack environment)
+if [[ -n "${DEPLOY_REGION:-}" ]]; then
+  ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text $AWS_PROFILE_ARG)
+  CDK_CONTEXT_ARGS="$CDK_CONTEXT_ARGS -c account=$ACCOUNT_ID"
+  echo "    Targeting: $ACCOUNT_ID / $DEPLOY_REGION"
+fi
 # Auto-pass architecture context when deploying native builds
 ARCH_CONTEXT=""
 if $NATIVE; then
@@ -80,7 +94,7 @@ fi
 
 cd infra
 rm -rf cdk.out
-cdk synth --context development=true
+cdk synth --context development=true $CDK_CONTEXT_ARGS
 cdk deploy ExpressComputeControlPlaneStack \
   --require-approval never \
   --context development=true \

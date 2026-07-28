@@ -555,7 +555,7 @@ public class ExpressComputeControlPlaneStack extends Stack {
             .stage("prod")
             .build();
         cfnMapping.getCfnOptions().setCondition(hasCustomDomain);
-        cfnMapping.addDependency(cfnDomain);
+        cfnMapping.addResourceDependency(cfnDomain);
 
         // -----------------------------------------------------------------------
         // CloudWatch Alarms — named to match SAM
