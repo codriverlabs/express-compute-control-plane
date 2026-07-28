@@ -19,10 +19,14 @@ import java.util.Properties;
  */
 public class EcpConfig {
 
-    private static final Path CONFIG_DIR = Path.of(
-            System.getenv("HOME") != null ? System.getenv("HOME") : System.getProperty("user.home"),
-            ".express-compute");
-    private static final Path CONFIG_FILE = CONFIG_DIR.resolve("config");
+    private static Path configDir() {
+        String home = System.getenv("HOME") != null ? System.getenv("HOME") : System.getProperty("user.home");
+        return Path.of(home, ".express-compute");
+    }
+
+    public static Path configFile() {
+        return configDir().resolve("config");
+    }
     static final String SSM_PARAM_ENDPOINT = "/express-compute/control-plane/api/endpoint";
     static final String SSM_PARAM_STREAM_URL = "/express-compute/control-plane/api/stream-url";
     static final String SSM_PARAM_PROVISIONING_URL = "/express-compute/control-plane/api/provisioning-url";
@@ -35,7 +39,7 @@ public class EcpConfig {
 
     /** ~/.express-compute/tenants/{region}/{tenantId}.pem */
     public Path tenantSshKeyPath(String region, String tenantId) {
-        return CONFIG_DIR.resolve("tenants").resolve(region).resolve(tenantId + ".pem");
+        return configDir().resolve("tenants").resolve(region).resolve(tenantId + ".pem");
     }
 
     public String getEndpoint() {
@@ -75,32 +79,29 @@ public class EcpConfig {
     }
 
     public void save(String endpoint, String region) throws IOException {
-        Files.createDirectories(CONFIG_DIR);
+        Files.createDirectories(configDir());
         Properties p = new Properties();
         if (endpoint != null) p.setProperty("endpoint", endpoint);
         if (region != null) p.setProperty("region", region);
-        try (var out = Files.newOutputStream(CONFIG_FILE)) {
+        try (var out = Files.newOutputStream(configFile())) {
             p.store(out, "ecp CLI configuration");
         }
-    }
-
-    public static Path configFile() {
-        return CONFIG_FILE;
     }
 
     private void cacheProperty(String key, String value) {
         props.setProperty(key, value);
         try {
-            Files.createDirectories(CONFIG_DIR);
-            try (var out = Files.newOutputStream(CONFIG_FILE)) {
+            Files.createDirectories(configDir());
+            try (var out = Files.newOutputStream(configFile())) {
                 props.store(out, "ecp CLI configuration");
             }
         } catch (IOException ignored) {}
     }
 
     private void load() {
-        if (Files.exists(CONFIG_FILE)) {
-            try (var in = Files.newInputStream(CONFIG_FILE)) {
+        Path file = configFile();
+        if (Files.exists(file)) {
+            try (var in = Files.newInputStream(file)) {
                 props.load(in);
             } catch (IOException e) {
                 // ignore
