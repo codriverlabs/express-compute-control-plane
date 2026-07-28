@@ -1,5 +1,6 @@
 package ai.codriverlabs.ecp.tenant.service;
 
+import ai.codriverlabs.ecp.tenant.InfraNaming;
 import ai.codriverlabs.ecp.tenant.TenantNaming;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jboss.logging.Logger;
@@ -78,7 +79,7 @@ public class TenantNetworkService {
                         Tag.builder().key("ecp-tenant").value(tenantId).build(),
                         Tag.builder().key("kubernetes.io/cluster/" + clusterName).value("owned").build(),
                         Tag.builder().key("kubernetes.io/role/elb").value("1").build(),
-                        Tag.builder().key("Platform").value("express-compute").build())
+                        Tag.builder().key("Platform").value(InfraNaming.PLATFORM_TAG_VALUE).build())
                     .build())
                 .build()).subnet().subnetId();
             LOG.infof("Created public subnet %s (%s) for tenant %s", publicSubnetId, publicCidr, tenantId);
@@ -97,14 +98,14 @@ public class TenantNetworkService {
                         Tag.builder().key("ecp-tenant").value(tenantId).build(),
                         Tag.builder().key("kubernetes.io/cluster/" + clusterName).value("owned").build(),
                         Tag.builder().key("kubernetes.io/role/internal-elb").value("1").build(),
-                        Tag.builder().key("Platform").value("express-compute").build())
+                        Tag.builder().key("Platform").value(InfraNaming.PLATFORM_TAG_VALUE).build())
                     .build())
                 .build()).subnet().subnetId();
             LOG.infof("Created private subnet %s (%s) for tenant %s", privateSubnetId, privateCidr, tenantId);
 
             // Route table associations
-            String publicRtId = findRouteTable(vpcId, "ecp-managed-k8s-infra-public-rt");
-            String privateRtId = findRouteTable(vpcId, "ecp-managed-k8s-infra-private-rt");
+            String publicRtId = findRouteTable(vpcId, InfraNaming.publicRouteTableName());
+            String privateRtId = findRouteTable(vpcId, InfraNaming.privateRouteTableName());
             ec2.associateRouteTable(AssociateRouteTableRequest.builder()
                 .subnetId(publicSubnetId).routeTableId(publicRtId).build());
             ec2.associateRouteTable(AssociateRouteTableRequest.builder()
@@ -149,7 +150,7 @@ public class TenantNetworkService {
                     Tag.builder().key("Name").value(sgName).build(),
                     Tag.builder().key("ecp-tenant").value(tenantId).build(),
                     Tag.builder().key("kubernetes.io/cluster/" + clusterName).value("owned").build(),
-                    Tag.builder().key("Platform").value("express-compute").build())
+                    Tag.builder().key("Platform").value(InfraNaming.PLATFORM_TAG_VALUE).build())
                 .build())
             .build()).groupId();
 
@@ -184,11 +185,15 @@ public class TenantNetworkService {
     }
 
     private String findRouteTable(String vpcId, String nameTag) {
-        return ec2.describeRouteTables(DescribeRouteTablesRequest.builder()
+        var tables = ec2.describeRouteTables(DescribeRouteTablesRequest.builder()
             .filters(
                 Filter.builder().name("vpc-id").values(vpcId).build(),
                 Filter.builder().name("tag:Name").values(nameTag).build())
-            .build()).routeTables().getFirst().routeTableId();
+            .build()).routeTables();
+        if (tables.isEmpty()) {
+            throw new IllegalStateException("Route table not found: " + nameTag + " in VPC " + vpcId);
+        }
+        return tables.getFirst().routeTableId();
     }
 
     /**
