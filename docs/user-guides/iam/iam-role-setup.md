@@ -127,7 +127,7 @@ aws iam update-assume-role-policy --role-name my-app-role --policy-document file
 
 ## Using Session Tags for Fine-Grained Access
 
-Express Compute passes the same 6 session tags as real EKS Workload Identity. Use them in resource policies for fine-grained access:
+Express Compute passes 6 session tags with the same **keys** as real EKS Workload Identity. The only difference is `eks-cluster-arn`, which uses the `arn:aws:ecp:` service namespace instead of `arn:aws:eks:` to distinguish non-EKS clusters. All other tag values are identical. Use them in resource policies for fine-grained access:
 
 ### S3 Bucket Policy (namespace-scoped)
 
