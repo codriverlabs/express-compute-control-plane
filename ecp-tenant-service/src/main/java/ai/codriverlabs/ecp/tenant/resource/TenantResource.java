@@ -150,8 +150,12 @@ public class TenantResource {
 
     @POST
     @Path("/{id}/stop")
-    public Response stopTenant(@PathParam("id") String id) {
+    public Response stopTenant(@PathParam("id") String id, @Context ContainerRequestContext ctx) {
         try {
+            String callerArn = (String) ctx.getProperty("callerArn");
+            TenantItem item = provisioningService.getState(id);
+            if (callerArn != null && item.ownerArn() != null && !callerArn.equals(item.ownerArn()))
+                return error(404, "NotFoundException", "Tenant not found: " + id);
             provisioningService.stop(id);
             return Response.accepted(Map.of("tenantId", id, "status", "stopping")).build();
         } catch (IllegalArgumentException e) {
@@ -164,8 +168,12 @@ public class TenantResource {
 
     @POST
     @Path("/{id}/resume")
-    public Response resumeTenant(@PathParam("id") String id) {
+    public Response resumeTenant(@PathParam("id") String id, @Context ContainerRequestContext ctx) {
         try {
+            String callerArn = (String) ctx.getProperty("callerArn");
+            TenantItem item = provisioningService.getState(id);
+            if (callerArn != null && item.ownerArn() != null && !callerArn.equals(item.ownerArn()))
+                return error(404, "NotFoundException", "Tenant not found: " + id);
             provisioningService.resume(id);
             return Response.accepted(Map.of("tenantId", id, "status", "resuming")).build();
         } catch (IllegalArgumentException e) {

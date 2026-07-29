@@ -237,8 +237,80 @@ class TenantResourceTest {
     }
 
     // -------------------------------------------------------------------------
+    // Ownership: stop
+    // -------------------------------------------------------------------------
+
+    @Test
+    void stop_ownedTenant_returns202() {
+        var item = tenantItem("t1", "arn:aws:iam::123:role/dev");
+        when(provisioningService.getState("t1")).thenReturn(item);
+        Response r = resource.stopTenant("t1", ctx);
+        assertEquals(202, r.getStatus());
+        verify(provisioningService).stop("t1");
+    }
+
+    @Test
+    void stop_notOwnedTenant_returns404() {
+        var item = tenantItem("t1", "arn:aws:iam::999:role/other");
+        when(provisioningService.getState("t1")).thenReturn(item);
+        Response r = resource.stopTenant("t1", ctx);
+        assertEquals(404, r.getStatus());
+        assertErrorCode(r, "NotFoundException");
+        verify(provisioningService, never()).stop(any());
+    }
+
+    @Test
+    void stop_noOwnerOnTenant_allowsAccess() {
+        var item = tenantItem("t1", null);
+        when(provisioningService.getState("t1")).thenReturn(item);
+        Response r = resource.stopTenant("t1", ctx);
+        assertEquals(202, r.getStatus());
+        verify(provisioningService).stop("t1");
+    }
+
+    // -------------------------------------------------------------------------
+    // Ownership: resume
+    // -------------------------------------------------------------------------
+
+    @Test
+    void resume_ownedTenant_returns202() {
+        var item = tenantItem("t1", "arn:aws:iam::123:role/dev");
+        when(provisioningService.getState("t1")).thenReturn(item);
+        Response r = resource.resumeTenant("t1", ctx);
+        assertEquals(202, r.getStatus());
+        verify(provisioningService).resume("t1");
+    }
+
+    @Test
+    void resume_notOwnedTenant_returns404() {
+        var item = tenantItem("t1", "arn:aws:iam::999:role/other");
+        when(provisioningService.getState("t1")).thenReturn(item);
+        Response r = resource.resumeTenant("t1", ctx);
+        assertEquals(404, r.getStatus());
+        assertErrorCode(r, "NotFoundException");
+        verify(provisioningService, never()).resume(any());
+    }
+
+    @Test
+    void resume_noOwnerOnTenant_allowsAccess() {
+        var item = tenantItem("t1", null);
+        when(provisioningService.getState("t1")).thenReturn(item);
+        Response r = resource.resumeTenant("t1", ctx);
+        assertEquals(202, r.getStatus());
+        verify(provisioningService).resume("t1");
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private static ai.codriverlabs.ecp.tenant.model.TenantItem tenantItem(String id, String ownerArn) {
+        return new ai.codriverlabs.ecp.tenant.model.TenantItem(
+            id, "cluster-" + id, true, "user@example.com", ownerArn,
+            "2026-07-29T00:00:00Z", "2026-07-29T00:00:00Z",
+            "running", "ready", 100, "i-abc123", "1.2.3.4",
+            null, null, "ondemand", null);
+    }
 
     private static TenantResource.CreateTenantRequest req(String clusterName, Boolean managed) {
         var r = new TenantResource.CreateTenantRequest();
