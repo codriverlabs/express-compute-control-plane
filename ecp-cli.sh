@@ -11,4 +11,6 @@ else
   exit 1
 fi
 
+
+export AWS_REGION=eu-west-1
 $CMD "$@"
