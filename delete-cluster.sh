@@ -1,2 +1,2 @@
 #!/bin/bash
-./ecp-cli.sh delete-cluster $1
+./cli.sh delete-cluster $1
