@@ -1,5 +1,7 @@
 package ai.codriverlabs.ecp.tenant.model;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
 /**
  * DynamoDB item schema for ecp-tenants table.
  *
@@ -11,6 +13,7 @@ package ai.codriverlabs.ecp.tenant.model;
  *
  * Fields marked "managed only" are null for unmanaged tenants.
  */
+@RegisterForReflection
 public record TenantItem(
     String tenantId,
     String clusterName,

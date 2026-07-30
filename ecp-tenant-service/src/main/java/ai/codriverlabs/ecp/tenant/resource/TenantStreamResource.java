@@ -227,5 +227,6 @@ public class TenantStreamResource {
     /**
      * Message schema from the boot script's SQS progress reports.
      */
+    @io.quarkus.runtime.annotations.RegisterForReflection
     public record ProgressMessage(String tenantId, String state, String phase, int progress) {}
 }
