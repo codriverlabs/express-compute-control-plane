@@ -769,7 +769,7 @@ public class TenantProvisioningService {
         try {
             var subnetResp = ec2.describeSubnets(software.amazon.awssdk.services.ec2.model.DescribeSubnetsRequest.builder()
                 .filters(software.amazon.awssdk.services.ec2.model.Filter.builder()
-                    .name("tag:express-compute-tenant").values(tenantId).build())
+                    .name("tag:ecp-tenant").values(tenantId).build())
                 .build());
             for (var subnet : subnetResp.subnets()) {
                 ec2.deleteSubnet(software.amazon.awssdk.services.ec2.model.DeleteSubnetRequest.builder()
@@ -784,7 +784,7 @@ public class TenantProvisioningService {
         try {
             var sgResp = ec2.describeSecurityGroups(software.amazon.awssdk.services.ec2.model.DescribeSecurityGroupsRequest.builder()
                 .filters(software.amazon.awssdk.services.ec2.model.Filter.builder()
-                    .name("tag:express-compute-tenant").values(tenantId).build())
+                    .name("tag:ecp-tenant").values(tenantId).build())
                 .build());
             for (var sg : sgResp.securityGroups()) {
                 ec2.deleteSecurityGroup(software.amazon.awssdk.services.ec2.model.DeleteSecurityGroupRequest.builder()
