@@ -1,5 +1,6 @@
 package ai.codriverlabs.ecp.tenant.service;
 
+import ai.codriverlabs.ecp.tenant.InfraNaming;
 import ai.codriverlabs.ecp.tenant.TenantNaming;
 import ai.codriverlabs.ecp.tenant.exception.ClusterAlreadyExistsException;
 import ai.codriverlabs.ecp.tenant.model.TenantItem;
@@ -174,7 +175,7 @@ public class TenantProvisioningService {
                 .keyName(TenantNaming.keyPairName(tenantId))
                 .tagSpecifications(software.amazon.awssdk.services.ec2.model.TagSpecification.builder()
                     .resourceType(software.amazon.awssdk.services.ec2.model.ResourceType.KEY_PAIR)
-                    .tags(software.amazon.awssdk.services.ec2.model.Tag.builder().key("project").value("express-compute").build(),
+                    .tags(software.amazon.awssdk.services.ec2.model.Tag.builder().key(InfraNaming.PLATFORM_TAG_KEY).value(InfraNaming.PLATFORM_TAG_VALUE).build(),
                           software.amazon.awssdk.services.ec2.model.Tag.builder().key("ecp-tenant").value(tenantId).build())
                     .build())
                 .build());
@@ -717,30 +718,31 @@ public class TenantProvisioningService {
             LOG.infof("Deleted cluster registration %s", tenant.clusterName());
         }
 
-        // 3. Delete secrets
-        deleteSecretIfExists("express-compute/tenant/" + tenantId + "/signing-key");
-        deleteSecretIfExists("express-compute/tenant/" + tenantId + "/ssh-key");
+        // 3. Delete secrets (PKI + SSH)
+        deleteSecretIfExists(TenantNaming.secretPath(tenantId, "ca-key"));
+        deleteSecretIfExists(TenantNaming.secretPath(tenantId, "ca-crt"));
+        deleteSecretIfExists(TenantNaming.secretPath(tenantId, "sa-key"));
+        deleteSecretIfExists(TenantNaming.secretPath(tenantId, "ssh-key"));
 
         // 4. Delete EC2 key pair
         try {
             ec2.deleteKeyPair(DeleteKeyPairRequest.builder()
-                .keyName("express-compute-tenant-" + tenantId).build());
+                .keyName(TenantNaming.keyPairName(tenantId)).build());
         } catch (Exception e) {
             LOG.warnf("Could not delete key pair for tenant %s: %s", tenantId, e.getMessage());
         }
 
         // 5. Delete IAM role + instance profile
-        String awsRegion = System.getenv("AWS_REGION");
-        String roleName = "express-compute-tenant-" + tenantId + "-" + awsRegion + "-instance-role";
+        String roleName = TenantNaming.roleName(tenantId);
         try {
-            iamService.deleteTenantRole(roleName, roleName);
+            iamService.deleteTenantRole(roleName, TenantNaming.instanceProfileName(tenantId));
             LOG.infof("Deleted IAM role + instance profile %s", roleName);
         } catch (Exception e) {
             LOG.warnf("Could not delete IAM role %s: %s", roleName, e.getMessage());
         }
 
         // 5b. Delete DLM execution role
-        String dlmRoleName = "express-compute-tenant-" + tenantId + "-" + awsRegion + "-dlm";
+        String dlmRoleName = TenantNaming.dlmRoleName(tenantId);
         try {
             iam.detachRolePolicy(software.amazon.awssdk.services.iam.model.DetachRolePolicyRequest.builder()
                 .roleName(dlmRoleName)
