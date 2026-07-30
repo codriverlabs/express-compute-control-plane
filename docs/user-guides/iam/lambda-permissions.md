@@ -28,7 +28,7 @@ Handles cluster/association CRUD and trust policy management via API Gateway.
 | `dynamodb:GetItem`, `PutItem`, `DeleteItem`, `UpdateItem`, `Scan`, `Query` | `express-compute-associations` table | Association CRUD |
 | `iam:GetRole` | `arn:aws:iam::*:role/*` | Check if role exists before creating association |
 | `iam:ListRoleTags` | `arn:aws:iam::*:role/*` | Verify role is tagged `ecp-managed=true` before trust policy update |
-| `iam:UpdateAssumeRolePolicy` | `arn:aws:iam::<account>:role/*` (condition: tag `ecp-managed=true`) | Add/remove trust policy statements for workload identitys |
+| `iam:UpdateAssumeRolePolicy` | `arn:aws:iam::<account>:role/*` (condition: tag `ecp-managed=true`) | Add/remove trust policy statements for workload identities |
 
 ---
 

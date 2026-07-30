@@ -211,4 +211,4 @@ A: Existing trust statements remain on the role (they were already applied). Fut
 A: IAM trust policies have a 4,096 byte limit. Each scoped Express Compute statement is ~350 bytes, allowing ~10 associations per role. For roles shared across many namespaces, use a broader condition (cluster-only).
 
 **Q: Does Express Compute support cross-account roles?**  
-A: Not in v1.1.0. Cross-account role assumption will be supported in a future release.
+A: Not currently supported. Cross-account role assumption will be added in a future release.

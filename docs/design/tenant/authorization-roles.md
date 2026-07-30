@@ -24,7 +24,7 @@ Express Compute uses a role-based authorization model to control who can provisi
 | Delete cluster provisioned for others | ✗ | ✗ | ✓ |
 | List all clusters | ✗ | ✗ | ✓ |
 | Delete any cluster | ✗ | ✗ | ✓ |
-| Manage workload identitys | ✓ (own) | ✓ (own) | ✓ (all) |
+| Manage workload identities | ✓ (own) | ✓ (own) | ✓ (all) |
 
 ### Key Distinctions
 

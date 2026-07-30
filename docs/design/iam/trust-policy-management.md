@@ -2,7 +2,7 @@
 
 ## Overview
 
-Express Compute manages trust policy statements on target IAM roles automatically when workload identitys are created or deleted. The mgmt-service Lambda appends/removes scoped trust statements, gated by the `ecp-managed=true` resource tag on the target role.
+Express Compute manages trust policy statements on target IAM roles automatically when workload identities are created or deleted. The mgmt-service Lambda appends/removes scoped trust statements, gated by the `ecp-managed=true` resource tag on the target role.
 
 ## Architecture
 
@@ -104,7 +104,7 @@ No resource constraint — scoping is via session tag conditions on the target r
 ## Limitations
 
 - Trust policy max size: 4,096 bytes (~10 scoped statements per role)
-- Cross-account roles not supported in v1.1.0 (Lambda cannot modify foreign-account roles)
+- Cross-account roles not supported in v1.0.0 (Lambda cannot modify foreign-account roles)
 - Sid uses sanitized alphanumeric only — long cluster/namespace/sa names may collide (unlikely in practice)
 
 ## Files
