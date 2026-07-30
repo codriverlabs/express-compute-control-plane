@@ -100,7 +100,7 @@ public class Ec2NodeClassWebhookResource {
             // 3. Set instanceProfile from tenant naming convention (no discovery needed)
             if (resource.getSpec().getInstanceProfile() == null || resource.getSpec().getInstanceProfile().isBlank()) {
                 resource.getSpec().setInstanceProfile(
-                    "express-compute-tenant-" + identity.tenantId() + "-instance-role");
+                    "ecp-tenant-" + identity.tenantId() + "-ir");
             }
 
             // 3. Set associatePublicIPAddress based on NAT gateway availability
