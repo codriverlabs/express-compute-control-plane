@@ -1,6 +1,6 @@
-# Caller Identity & Ownership Isolation (v1.1.0 GA)
+# Caller Identity & Ownership Isolation
 
-## Status: Planned for v1.1.0 GA
+## Status: Planned (post-v1.0.0)
 
 ## Overview
 

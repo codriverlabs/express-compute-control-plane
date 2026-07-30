@@ -113,7 +113,6 @@ After deploy, capture the outputs:
 ENDPOINT=$(aws cloudformation describe-stacks --stack-name ExpressComputeControlPlaneStack \
   --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
   --output text)
-  --output text)
 
 STREAM_URL=$(aws cloudformation describe-stacks --stack-name ecp \
   --query 'Stacks[0].Outputs[?OutputKey==`TenantStreamFunctionUrl`].OutputValue' \
@@ -180,7 +179,7 @@ kubectl apply -f ecp-workload-identity-webhook/k8s/
 
 ## 5. Create a workload identity
 
-See [IAM Role Setup](user-guides/iam/iam-role-setup.md) for full details on preparing IAM roles.
+See [IAM Role Setup](iam/iam-role-setup.md) for full details on preparing IAM roles.
 
 ```bash
 # Tag the role for automatic trust policy management
@@ -199,18 +198,8 @@ ecp create-association \
 
 ### k3s on EC2
 
-k3s exposes the OIDC discovery endpoint on the kube-apiserver. The issuer is typically `https://<node-public-ip>` (set via `--kube-apiserver-arg=service-account-issuer=https://<ip>`).
-
-```bash
-# On the k3s node — extract JWKS
-kubectl get --raw /openid/v1/jwks > /tmp/jwks.json
-
-ecp create-cluster my-k3s \
-  --issuer https://<node-public-ip> \
-  --jwks-file /tmp/jwks.json
-```
-
-The auth-proxy needs to reach the kube-apiserver for TokenReview. In k3s this works out of the box since the proxy runs in-cluster.
+See [integration-k3s.md](integration-k3s.md) for k3s-specific OIDC issuer configuration.
+For the full setup procedure, see the [Self-Managed Quick Start](https://github.com/codriverlabs/express-compute-platform/blob/main/docs/user-guides/self-managed-quick-start.md).
 
 ### Express Compute
 

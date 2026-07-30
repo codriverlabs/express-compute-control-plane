@@ -87,7 +87,7 @@ export KUBECONFIG=acme-staging.kubeconfig
 
 ---
 
-## 3. Create workload identitys
+## 3. Create workload identities
 
 First, prepare your IAM role (see [IAM Role Setup](iam/iam-role-setup.md) for full details):
 

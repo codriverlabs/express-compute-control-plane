@@ -68,7 +68,7 @@ The cluster name is **scoped to a region**. The same name can be reused across r
 
 ### Registration
 
-The cluster name is what gets registered in `express-compute-clusters` (for workload identitys) and is visible to workloads via the credential exchange flow. It serves the same purpose as an EKS cluster name — it's how pods and operators reference the cluster.
+The cluster name is what gets registered in `express-compute-clusters` (for workload identities) and is visible to workloads via the credential exchange flow. It serves the same purpose as an EKS cluster name — it's how pods and operators reference the cluster.
 
 **For managed tenants:** The `tenant-service` Lambda pre-registers the cluster before EC2 boots. `TenantCryptoService` generates KMS-signed CA + SA signing keys, derives JWKS, and `preRegisterCluster()` writes the cluster record (with JWKS and issuer) to DynamoDB. No `register-cluster` CLI call is needed from the boot script.
 
