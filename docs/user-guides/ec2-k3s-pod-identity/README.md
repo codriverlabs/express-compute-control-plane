@@ -1,7 +1,8 @@
 # EKS Workload Identity on EC2 + k3s
 
 > **Full tutorial** — walks through everything from EC2 launch to working Workload Identity.
-> For a concise reference if you already have k3s running, see [integration-k3s.md](../integration-k3s.md).
+> If you already have k3s running, see the [Self-Managed Quick Start](https://github.com/codriverlabs/express-compute-platform/blob/main/docs/user-guides/self-managed-quick-start.md)
+> for the general procedure, or [integration-k3s.md](../integration-k3s.md) for k3s-specific OIDC configuration.
 
 Run EKS Workload Identity on a plain EC2 instance with k3s — no managed EKS cluster required. Pods get temporary AWS credentials exactly as they would on managed EKS.
 

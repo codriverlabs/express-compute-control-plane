@@ -159,7 +159,7 @@ See `docs/design/ssm-parameter-contract.md` for full details.
 | `docs/design/iam/trust-policy-management.md` | Trust policy auto-management |
 | `docs/user-guides/deployment.md` | Deployment guide |
 | `docs/user-guides/cli-reference.md` | Complete CLI command reference |
-| `docs/user-guides/integration-k3s.md` | k3s integration |
+| `docs/user-guides/integration-k3s.md` | k3s OIDC configuration (points to platform quick start) |
 
 ## License
 
