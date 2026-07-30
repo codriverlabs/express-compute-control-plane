@@ -422,19 +422,19 @@ public class ExpressComputeControlPlaneStack extends Stack {
                     "ec2:CancelSpotInstanceRequests", "ec2:DescribeSpotInstanceRequests"))
                 .resources(List.of("*"))
                 .build());
-            // EC2: EIP release/disassociate — scoped to EIPs tagged project=express-compute
+            // EC2: EIP release/disassociate — scoped to EIPs tagged Platform=express-compute
             tenantFn.addToRolePolicy(PolicyStatement.Builder.create()
                 .actions(List.of("ec2:ReleaseAddress", "ec2:DisassociateAddress"))
                 .resources(List.of(String.format("arn:aws:ec2:%s:%s:elastic-ip/*",
                     Stack.of(this).getRegion(), Stack.of(this).getAccount())))
-                .conditions(Map.of("StringEquals", Map.of("aws:ResourceTag/project", "express-compute")))
+                .conditions(Map.of("StringEquals", Map.of("aws:ResourceTag/Platform", "express-compute")))
                 .build());
-            // EC2: key pair deletion — scoped to key pairs tagged project=express-compute
+            // EC2: key pair deletion — scoped to key pairs tagged Platform=express-compute
             tenantFn.addToRolePolicy(PolicyStatement.Builder.create()
                 .actions(List.of("ec2:DeleteKeyPair"))
                 .resources(List.of(String.format("arn:aws:ec2:%s:%s:key-pair/*",
                     Stack.of(this).getRegion(), Stack.of(this).getAccount())))
-                .conditions(Map.of("StringEquals", Map.of("aws:ResourceTag/project", "express-compute")))
+                .conditions(Map.of("StringEquals", Map.of("aws:ResourceTag/Platform", "express-compute")))
                 .build());
             // EC2: snapshot deletion — scoped to snapshots tagged Platform=express-compute
             tenantFn.addToRolePolicy(PolicyStatement.Builder.create()
