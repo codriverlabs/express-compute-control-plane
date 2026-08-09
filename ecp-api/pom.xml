@@ -30,5 +30,24 @@
       <version>2.18.3</version>
       <scope>provided</scope>
     </dependency>
+    <!-- SigV4 signing for client-side usage (CLI, MCP server) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
+      <version>2.50.1</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>http-client-spi</artifactId>
+      <version>2.50.1</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
+      <version>2.50.1</version>
+      <optional>true</optional>
+    </dependency>
   </dependencies>
 </project>

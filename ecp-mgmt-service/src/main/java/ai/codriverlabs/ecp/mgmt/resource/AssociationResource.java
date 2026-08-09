@@ -1,5 +1,7 @@
 package ai.codriverlabs.ecp.mgmt.resource;
 
+import ai.codriverlabs.ecp.api.mgmt.AssociationApi;
+import ai.codriverlabs.ecp.api.mgmt.CreateAssociationRequest;
 import ai.codriverlabs.ecp.mgmt.service.DynamoDbAssociationService;
 import ai.codriverlabs.ecp.mgmt.service.DynamoDbClusterService;
 import ai.codriverlabs.ecp.mgmt.spi.WorkloadIdentityRouter;
@@ -18,30 +20,25 @@ import java.util.Map;
 @Path("/clusters/{clusterName}/workload-identities")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class AssociationResource {
+public class AssociationResource implements AssociationApi {
 
     private static final Logger LOG = Logger.getLogger(AssociationResource.class);
 
     @Inject DynamoDbAssociationService associationService;
     @Inject DynamoDbClusterService clusterService;
     @Inject WorkloadIdentityRouter router;
-
-    public static class CreateAssociationRequest {
-        @JsonProperty("namespace") public String namespace;
-        @JsonProperty("serviceAccount") public String serviceAccount;
-        @JsonProperty("roleArn") public String roleArn;
-    }
+    @Context ContainerRequestContext ctx;
 
     @POST
+    @Override
     public Response createAssociation(@PathParam("clusterName") String clusterName,
-                                       CreateAssociationRequest request,
-                                       @Context ContainerRequestContext ctx) {
+                                       CreateAssociationRequest request) {
         try {
-            if (!verifyClusterOwnership(clusterName, ctx))
+            if (!verifyClusterOwnership(clusterName))
                 return error(404, "NotFoundException", "Cluster not found: " + clusterName);
             if (request == null) return error(400, "InvalidParameterException", "Request body is required");
             Map<String, String> result = router.resolve(clusterName).createAssociation(
-                clusterName, request.namespace, request.serviceAccount, request.roleArn);
+                clusterName, request.namespace(), request.serviceAccount(), request.roleArn());
             return Response.status(201).entity(result).build();
         } catch (IllegalArgumentException e) {
             return error(400, "InvalidParameterException", e.getMessage());
@@ -54,12 +51,12 @@ public class AssociationResource {
     }
 
     @GET
+    @Override
     public Response listAssociations(@PathParam("clusterName") String clusterName,
                                       @QueryParam("namespace") String namespace,
-                                      @QueryParam("serviceAccount") String serviceAccount,
-                                      @Context ContainerRequestContext ctx) {
+                                      @QueryParam("serviceAccount") String serviceAccount) {
         try {
-            if (!verifyClusterOwnership(clusterName, ctx))
+            if (!verifyClusterOwnership(clusterName))
                 return error(404, "NotFoundException", "Cluster not found: " + clusterName);
             List<Map<String, String>> result = router.resolve(clusterName).listAssociations(
                 clusterName, namespace, serviceAccount);
@@ -72,11 +69,11 @@ public class AssociationResource {
 
     @GET
     @Path("/{associationId}")
+    @Override
     public Response describeAssociation(@PathParam("clusterName") String clusterName,
-                                         @PathParam("associationId") String associationId,
-                                         @Context ContainerRequestContext ctx) {
+                                         @PathParam("associationId") String associationId) {
         try {
-            if (!verifyClusterOwnership(clusterName, ctx))
+            if (!verifyClusterOwnership(clusterName))
                 return error(404, "NotFoundException", "Cluster not found: " + clusterName);
             Map<String, String> result = router.resolve(clusterName).describeAssociation(clusterName, associationId);
             if (result == null) return error(404, "NotFoundException", "Association not found: " + associationId);
@@ -89,11 +86,11 @@ public class AssociationResource {
 
     @DELETE
     @Path("/{associationId}")
+    @Override
     public Response deleteAssociation(@PathParam("clusterName") String clusterName,
-                                       @PathParam("associationId") String associationId,
-                                       @Context ContainerRequestContext ctx) {
+                                       @PathParam("associationId") String associationId) {
         try {
-            if (!verifyClusterOwnership(clusterName, ctx))
+            if (!verifyClusterOwnership(clusterName))
                 return error(404, "NotFoundException", "Cluster not found: " + clusterName);
             router.resolve(clusterName).deleteAssociation(clusterName, associationId);
             return Response.noContent().build();
@@ -105,15 +102,14 @@ public class AssociationResource {
         }
     }
 
-    /** Returns true if caller owns the cluster (or ownership is not enforced). */
-    private boolean verifyClusterOwnership(String clusterName, ContainerRequestContext ctx) {
+    private boolean verifyClusterOwnership(String clusterName) {
         String callerArn = (String) ctx.getProperty("callerArn");
-        if (callerArn == null) return true; // no identity → skip (e.g., webhook calls)
+        if (callerArn == null) return true;
         try {
             String ownerArn = clusterService.getOwnerArn(clusterName);
             return ownerArn == null || callerArn.equals(ownerArn);
         } catch (IllegalArgumentException e) {
-            return false; // cluster doesn't exist
+            return false;
         }
     }
 

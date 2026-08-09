@@ -1,5 +1,7 @@
 package ai.codriverlabs.ecp.mgmt.resource;
 
+import ai.codriverlabs.ecp.api.mgmt.ClusterApi;
+import ai.codriverlabs.ecp.api.mgmt.UpdateJwksRequest;
 import ai.codriverlabs.ecp.mgmt.service.DynamoDbClusterService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.inject.Inject;
@@ -16,11 +18,12 @@ import java.util.Map;
 @Path("/clusters")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class ClusterResource {
+public class ClusterResource implements ClusterApi {
 
     private static final Logger LOG = Logger.getLogger(ClusterResource.class);
 
     @Inject DynamoDbClusterService clusterService;
+    @Context ContainerRequestContext ctx;
 
     public static class RegisterClusterRequest {
         @JsonProperty("name") public String name;
@@ -33,7 +36,8 @@ public class ClusterResource {
 
     @GET
     @Path("/{name}")
-    public Response describeCluster(@PathParam("name") String name, @Context ContainerRequestContext ctx) {
+    @Override
+    public Response describeCluster(@PathParam("name") String name) {
         try {
             String callerArn = (String) ctx.getProperty("callerArn");
             String ownerArn = clusterService.getOwnerArn(name);
@@ -49,7 +53,8 @@ public class ClusterResource {
     }
 
     @GET
-    public Response listClusters(@Context ContainerRequestContext ctx) {
+    @Override
+    public Response listClusters() {
         try {
             String callerArn = (String) ctx.getProperty("callerArn");
             List<Map<String, String>> result = callerArn != null
@@ -64,14 +69,14 @@ public class ClusterResource {
 
     @PUT
     @Path("/{name}/jwks")
-    public Response refreshJwks(@PathParam("name") String name, Map<String, Object> body,
-                                 @Context ContainerRequestContext ctx) {
+    @Override
+    public Response updateJwks(@PathParam("name") String name, UpdateJwksRequest request) {
         try {
             String callerArn = (String) ctx.getProperty("callerArn");
             String ownerArn = clusterService.getOwnerArn(name);
             if (callerArn != null && ownerArn != null && !callerArn.equals(ownerArn))
                 return error(404, "NotFoundException", "Cluster not found: " + name);
-            String jwks = body != null && body.containsKey("jwks") ? body.get("jwks").toString() : null;
+            String jwks = request != null ? request.jwks() : null;
             clusterService.updateJwks(name, jwks);
             return Response.ok(Map.of("clusterName", name, "status", "updated")).build();
         } catch (IllegalArgumentException e) {
@@ -84,7 +89,8 @@ public class ClusterResource {
 
     @DELETE
     @Path("/{name}")
-    public Response deregisterCluster(@PathParam("name") String name, @Context ContainerRequestContext ctx) {
+    @Override
+    public Response deregisterCluster(@PathParam("name") String name) {
         try {
             String callerArn = (String) ctx.getProperty("callerArn");
             String ownerArn = clusterService.getOwnerArn(name);

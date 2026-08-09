@@ -1,5 +1,7 @@
 package ai.codriverlabs.ecp.credential.resource;
 
+import ai.codriverlabs.ecp.api.credential.AssumeRoleRequest;
+import ai.codriverlabs.ecp.api.credential.CredentialApi;
 import ai.codriverlabs.ecp.credential.service.AwsCredentialService;
 import ai.codriverlabs.ecp.credential.service.JwksTokenValidationService;
 import ai.codriverlabs.ecp.model.TokenClaims;
@@ -26,7 +28,7 @@ import java.util.Map;
 @Path("/clusters")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class CredentialExchangeResource {
+public class CredentialExchangeResource implements CredentialApi {
 
     private static final Logger LOG = Logger.getLogger(CredentialExchangeResource.class);
 
@@ -36,10 +38,6 @@ public class CredentialExchangeResource {
 
     @ConfigProperty(name = "express-compute.associations-table")
     String associationsTable;
-
-    public static class AgentRequest {
-        @JsonProperty("token") public String token;
-    }
 
     public static class AgentResponse {
         @JsonProperty("credentials") public CredentialsDto credentials;
@@ -73,12 +71,13 @@ public class CredentialExchangeResource {
 
     @POST
     @Path("/{clusterName}/assets")
+    @Override
     public Response assumeRoleForPodIdentity(
             @PathParam("clusterName") String clusterName,
             @HeaderParam("Authorization") String proxyAuthorization,
-            AgentRequest request) {
+            AssumeRoleRequest request) {
         try {
-            if (request == null || request.token == null || request.token.isEmpty())
+            if (request == null || request.token() == null || request.token().isEmpty())
                 return error(400, "InvalidParameterException", "token is required");
 
             // 1. Validate proxy identity — proves request came from a legitimate proxy
@@ -87,7 +86,7 @@ public class CredentialExchangeResource {
                 return error(403, "AccessDeniedException", "Proxy authorization header required");
             tokenValidationService.validateProxyToken(proxyAuthorization.substring(7), clusterName);
 
-            TokenClaims claims = tokenValidationService.validateToken(request.token, clusterName);
+            TokenClaims claims = tokenValidationService.validateToken(request.token(), clusterName);
 
             GetItemResponse assocResp = dynamoDb.getItem(GetItemRequest.builder()
                 .tableName(associationsTable)
