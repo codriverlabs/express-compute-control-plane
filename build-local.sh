@@ -101,14 +101,14 @@ if $PUSH && [[ "$REGISTRY" =~ \.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com ]]; then
     | docker login --username AWS --password-stdin "${REGISTRY}"
 fi
 
-# Resolve version from git tag (strip leading 'v' and any -N-gSHA suffix)
-IMAGE_TAG=$(git describe --tags 2>/dev/null | sed 's/^v//;s/-[0-9]*-g[0-9a-f]*$//' || echo "latest")
+# Resolve version from Maven POM (single source of truth for all artifacts and image tags)
+IMAGE_TAG=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | sed 's/-SNAPSHOT//')
 echo "==> Image tag: ${IMAGE_TAG}"
 
-# 0. Parent POM + model (always — required for dependency resolution)
-echo "--- [0] parent pom + model"
+# 0. Parent POM + model + api (always — required for dependency resolution)
+echo "--- [0] parent pom + model + api"
 mvn -B -N install $SKIP_FLAG
-mvn -B -pl ecp-model install $SKIP_FLAG
+mvn -B -pl ecp-model,ecp-api install $SKIP_FLAG
 
 # 1. Credential service
 if should_build "credential"; then
