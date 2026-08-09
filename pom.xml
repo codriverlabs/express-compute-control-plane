@@ -11,6 +11,7 @@
 
   <modules>
     <module>ecp-model</module>
+    <module>ecp-api</module>
     <module>ecp-credential-service</module>
     <module>ecp-mgmt-service</module>
     <module>ecp-tenant-service</module>
