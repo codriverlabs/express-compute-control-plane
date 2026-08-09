@@ -48,7 +48,7 @@
     <dependency>
       <groupId>ai.codriverlabs</groupId>
       <artifactId>ecp-api</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

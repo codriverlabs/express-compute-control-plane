@@ -41,6 +41,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>ai.codriverlabs</groupId>
+      <artifactId>ecp-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest</artifactId>
     </dependency>
