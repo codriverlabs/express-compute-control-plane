@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>ai.codriverlabs</groupId>
+    <artifactId>express-compute-parent</artifactId>
+    <version>1.1.3-SNAPSHOT</version>
+  </parent>
+  <artifactId>ecp-api</artifactId>
+  <description>Express Compute API contract — JAX-RS interfaces for credential, mgmt, and tenant services.
+    Shared by server implementations, CLI clients, and MCP server.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>ai.codriverlabs</groupId>
+      <artifactId>ecp-model</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+      <version>4.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>2.18.3</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- SigV4 signing for client-side usage (CLI, MCP server) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
+      <version>2.50.1</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>http-client-spi</artifactId>
+      <version>2.50.1</version>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
+      <version>2.50.1</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+</project>

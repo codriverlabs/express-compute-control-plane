@@ -38,6 +38,7 @@ class ClusterResourceTest {
     void setUp() throws Exception {
         resource = new ClusterResource();
         setField("provisioningService", provisioningService);
+        setField("ctx", ctx);
         setField("deploymentMode", "hybrid"); // default: both flows allowed
 
         when(ctx.getProperty("callerArn")).thenReturn("arn:aws:iam::123:role/dev");
@@ -57,7 +58,7 @@ class ClusterResourceTest {
             anyBoolean(), anyInt(), any()))
             .thenThrow(new ClusterAlreadyExistsException("my-cluster"));
 
-        Response r = resource.createCluster(managedReq("my-cluster"), ctx);
+        Response r = resource.createCluster(managedReq("my-cluster"));
 
         assertEquals(409, r.getStatus());
         assertErrorCode(r, "ResourceInUseException");
@@ -72,7 +73,7 @@ class ClusterResourceTest {
             anyBoolean(), anyInt(), any()))
             .thenThrow(new ClusterAlreadyExistsException("prod-cluster"));
 
-        Response r = resource.createCluster(managedReq("prod-cluster"), ctx);
+        Response r = resource.createCluster(managedReq("prod-cluster"));
 
         assertEquals(409, r.getStatus());
         // Message must instruct user how to resolve the conflict
@@ -88,7 +89,7 @@ class ClusterResourceTest {
         when(provisioningService.registerSelfManagedCluster(any(), any(), any(), any(), any(), any(), any(), any()))
             .thenThrow(new ClusterAlreadyExistsException("k3s-cluster"));
 
-        Response r = resource.createCluster(selfManagedReq("k3s-cluster"), ctx);
+        Response r = resource.createCluster(selfManagedReq("k3s-cluster"));
 
         assertEquals(409, r.getStatus());
         assertErrorCode(r, "ResourceInUseException");
@@ -100,7 +101,7 @@ class ClusterResourceTest {
         when(provisioningService.registerSelfManagedCluster(any(), any(), any(), any(), any(), any(), any(), any()))
             .thenThrow(new ClusterAlreadyExistsException("k3s-cluster"));
 
-        Response r = resource.createCluster(selfManagedReq("k3s-cluster"), ctx);
+        Response r = resource.createCluster(selfManagedReq("k3s-cluster"));
 
         assertMessageContains(r, "ecp delete-cluster k3s-cluster");
     }
@@ -116,7 +117,7 @@ class ClusterResourceTest {
         when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
             anyBoolean(), anyInt(), any())).thenReturn("abc123");
 
-        Response r = resource.createCluster(managedReq("new-cluster"), ctx);
+        Response r = resource.createCluster(managedReq("new-cluster"));
 
         assertEquals(202, r.getStatus());
         assertResponseField(r, "tenantId", "abc123");
@@ -128,7 +129,7 @@ class ClusterResourceTest {
         when(provisioningService.registerSelfManagedCluster(any(), any(), any(), any(), any(), any(), any(), any()))
             .thenReturn("def456");
 
-        Response r = resource.createCluster(selfManagedReq("new-k3s"), ctx);
+        Response r = resource.createCluster(selfManagedReq("new-k3s"));
 
         assertEquals(201, r.getStatus());
         assertResponseField(r, "tenantId", "def456");
@@ -144,7 +145,7 @@ class ClusterResourceTest {
         when(provisioningService.countTenantsByOwner(any())).thenReturn(5);
         when(provisioningService.getMaxTenantsPerCaller()).thenReturn(5);
 
-        Response r = resource.createCluster(managedReq("any-cluster"), ctx);
+        Response r = resource.createCluster(managedReq("any-cluster"));
 
         assertEquals(429, r.getStatus());
         assertErrorCode(r, "QuotaExceededException");
@@ -153,20 +154,20 @@ class ClusterResourceTest {
     @Test
     void missingCallerArn_returns403() {
         when(ctx.getProperty("callerArn")).thenReturn(null);
-        Response r = resource.createCluster(managedReq("any-cluster"), ctx);
+        Response r = resource.createCluster(managedReq("any-cluster"));
         assertEquals(403, r.getStatus());
     }
 
     @Test
     void invalidClusterName_returns400() {
-        Response r = resource.createCluster(managedReq("1-invalid"), ctx);
+        Response r = resource.createCluster(managedReq("1-invalid"));
         assertEquals(400, r.getStatus());
         assertErrorCode(r, "InvalidParameterException");
     }
 
     @Test
     void missingClusterName_returns400() {
-        Response r = resource.createCluster(managedReq(null), ctx);
+        Response r = resource.createCluster(managedReq(null));
         assertEquals(400, r.getStatus());
     }
 
@@ -178,7 +179,7 @@ class ClusterResourceTest {
     void managedMode_rejectsSelfManagedRegistration() throws Exception {
         setField("deploymentMode", "managed");
 
-        Response r = resource.createCluster(selfManagedReq("k3s-cluster"), ctx);
+        Response r = resource.createCluster(selfManagedReq("k3s-cluster"));
 
         assertEquals(400, r.getStatus());
         assertErrorCode(r, "InvalidParameterException");
@@ -191,7 +192,7 @@ class ClusterResourceTest {
         when(provisioningService.registerSelfManagedCluster(any(), any(), any(), any(), any(), any(), any(), any()))
             .thenReturn("abc123");
 
-        Response r = resource.createCluster(selfManagedReq("k3s-cluster"), ctx);
+        Response r = resource.createCluster(selfManagedReq("k3s-cluster"));
 
         assertEquals(201, r.getStatus());
     }
@@ -204,7 +205,7 @@ class ClusterResourceTest {
         when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
             anyBoolean(), anyInt(), any())).thenReturn("tenant123");
 
-        Response r = resource.createCluster(managedReq("managed-cluster"), ctx);
+        Response r = resource.createCluster(managedReq("managed-cluster"));
 
         assertEquals(202, r.getStatus());
     }
@@ -226,19 +227,17 @@ class ClusterResourceTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static ClusterResource.CreateClusterRequest managedReq(String clusterName) {
-        var r = new ClusterResource.CreateClusterRequest();
-        r.clusterName = clusterName;
-        // no jwks/issuer → managed mode
-        return r;
+    private static ai.codriverlabs.ecp.api.tenant.CreateClusterRequest managedReq(String clusterName) {
+        return new ai.codriverlabs.ecp.api.tenant.CreateClusterRequest(
+                clusterName, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null);
     }
 
-    private static ClusterResource.CreateClusterRequest selfManagedReq(String clusterName) {
-        var r = new ClusterResource.CreateClusterRequest();
-        r.clusterName = clusterName;
-        r.jwks = "{\"keys\":[]}";
-        r.issuer = "https://kubernetes.default.svc";
-        return r;
+    private static ai.codriverlabs.ecp.api.tenant.CreateClusterRequest selfManagedReq(String clusterName) {
+        return new ai.codriverlabs.ecp.api.tenant.CreateClusterRequest(
+                clusterName, null, null, null, null, null, null,
+                "{\"keys\":[]}", "https://kubernetes.default.svc",
+                null, null, null, null, null, null);
     }
 
     @SuppressWarnings("unchecked")

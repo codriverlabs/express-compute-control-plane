@@ -6,7 +6,7 @@
   <parent>
     <groupId>ai.codriverlabs</groupId>
     <artifactId>express-compute-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.3-SNAPSHOT</version>
   </parent>
   <artifactId>ecp-tenant-service</artifactId>
   <description>EKS-DX Tenant Service — async kubeadm cluster provisioning Lambda</description>
@@ -40,6 +40,11 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>ai.codriverlabs</groupId>
+      <artifactId>ecp-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest</artifactId>
