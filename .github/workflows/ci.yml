@@ -35,9 +35,9 @@ jobs:
 
       - name: Build Lambda function.zips
         run: |
-          mvn -B -pl ecp-model,ecp-credential-service package -DskipTests
-          mvn -B -pl ecp-model,ecp-mgmt-service package -DskipTests
-          mvn -B -pl ecp-model,ecp-tenant-service package -DskipTests
+          mvn -B -pl ecp-model,ecp-api,ecp-credential-service package -DskipTests
+          mvn -B -pl ecp-model,ecp-api,ecp-mgmt-service package -DskipTests
+          mvn -B -pl ecp-model,ecp-api,ecp-tenant-service package -DskipTests
 
       - name: Synth CDK stack
         run: mvn -B -pl infra compile exec:java -Ddevelopment=true
@@ -76,7 +76,7 @@ jobs:
         env:
           AWS_REGION: us-east-1
         run: |
-          mvn -B -pl ecp-model,ecp-mgmt-service test \
+          mvn -B -pl ecp-model,ecp-api,ecp-mgmt-service test \
             -Dtest=DynamoDbIntegrationTest \
             -Dsurefire.failIfNoSpecifiedTests=false \
             -Dintegration.dynamodb=true \
