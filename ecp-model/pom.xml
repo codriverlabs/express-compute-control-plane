@@ -6,7 +6,7 @@
   <parent>
     <groupId>ai.codriverlabs</groupId>
     <artifactId>express-compute-parent</artifactId>
-    <version>1.1.4-SNAPSHOT</version>
+    <version>1.1.5-SNAPSHOT</version>
   </parent>
   <artifactId>ecp-model</artifactId>
   <description>EKS-DX shared model — TokenClaims, ClusterType, and DTOs</description>
