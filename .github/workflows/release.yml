@@ -40,6 +40,11 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
+      - name: Set release version from tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mvn -B versions:set -DnewVersion=${VERSION} -DgenerateBackupPoms=false
+
       - name: Build and test
         run: mvn -B verify -DskipITs
         env:
@@ -75,7 +80,7 @@ jobs:
       - name: Build tenant-service native zip
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          mvn -B -pl ecp-model,ecp-tenant-service package -DskipTests -Pnative
+          mvn -B -pl ecp-model,ecp-api,ecp-tenant-service package -DskipTests -Pnative
           cp ecp-tenant-service/target/function.zip ecp-tenant-service-${VERSION}-${{ matrix.arch }}.zip
 
       - name: Upload arch artifacts
@@ -100,11 +105,16 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
+      - name: Set release version from tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mvn -B versions:set -DnewVersion=${VERSION} -DgenerateBackupPoms=false
+
       - name: Build JVM Lambda zips (credential + mgmt)
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          mvn -B -pl ecp-model,ecp-credential-service package -DskipTests
-          mvn -B -pl ecp-model,ecp-mgmt-service package -DskipTests
+          mvn -B -pl ecp-model,ecp-api,ecp-credential-service package -DskipTests
+          mvn -B -pl ecp-model,ecp-api,ecp-mgmt-service package -DskipTests
           cp ecp-credential-service/target/function.zip ecp-credential-service-${VERSION}.zip
           cp ecp-mgmt-service/target/function.zip ecp-mgmt-service-${VERSION}.zip
 
@@ -188,6 +198,11 @@ jobs:
 
       - name: Install CDK CLI
         run: npm install -g aws-cdk
+
+      - name: Set release version from tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          mvn -B versions:set -DnewVersion=${VERSION} -DgenerateBackupPoms=false
 
       - name: Download arm64 build artifacts (contains tenant zip)
         uses: actions/download-artifact@v8
