@@ -7,7 +7,7 @@
   <parent>
     <groupId>ai.codriverlabs</groupId>
     <artifactId>express-compute-parent</artifactId>
-    <version>1.1.5-SNAPSHOT</version>
+    <version>1.1.6-SNAPSHOT</version>
   </parent>
 
   <artifactId>ecp-workload-identity-webhook</artifactId>
