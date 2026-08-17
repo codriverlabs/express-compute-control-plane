@@ -13,7 +13,7 @@
 
   <properties>
     <skipITs>true</skipITs>
-    <aws.sdk.version>2.51.2</aws.sdk.version>
+    <aws.sdk.version>2.53.0</aws.sdk.version>
   </properties>
 
   <dependencyManagement>
