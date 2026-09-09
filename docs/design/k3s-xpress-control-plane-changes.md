@@ -9,7 +9,7 @@ distribution from `express-compute-platform`.
 
 ### TenantItem.java
 
-Add `distribution`, `cni`, and `autoscaling` fields:
+Add `distribution` field:
 
 ```java
 @RegisterForReflection
@@ -18,8 +18,6 @@ public record TenantItem(
     String clusterName,
     boolean managed,
     String distribution,       // NEW — "eks-d" (default) | "k3s"
-    String cni,                // NEW — null (eks-d default) | "flannel" | "vpc"
-    String autoscaling,        // NEW — null (eks-d default) | "none" | "karpenter"
     String idcUserId,
     String ownerArn,
     String createdAt,
@@ -106,7 +104,6 @@ String amiId = ssm.getParameter(GetParameterRequest.builder()
 
 Add a k3s branch in `userDataScript()`. The key differences:
 - Writes to `/opt/k3s-xpress/cluster.env` (not `/opt/eks-d/cluster.env`)
-- Includes `CNI_MODE` and `AUTOSCALING_MODE`
 - Does NOT include EKS-D-specific fields (`POD_SUBNET`, `K8S_VERSION`)
 
 ```java
@@ -131,8 +128,7 @@ private String userDataScript(String tenantId, String clusterName,
 private String k3sUserDataScript(String tenantId, String clusterName,
                                  String region, String nodeIp, String accountId,
                                  String publicSubnetId, String privateSubnetId,
-                                 String securityGroupId, String cni,
-                                 String autoscaling) {
+                                 String securityGroupId) {
     String nodeRoleArn = "arn:aws:iam::" + accountId + ":role/"
         + TenantNaming.roleName(tenantId);
     String progressQueueUrl = "https://sqs." + region + ".amazonaws.com/"
@@ -154,17 +150,12 @@ private String k3sUserDataScript(String tenantId, String clusterName,
         PUBLIC_SUBNET_ID="%s"
         PRIVATE_SUBNET_ID="%s"
         SECURITY_GROUP_ID="%s"
-        CNI_MODE="%s"
-        AUTOSCALING_MODE="%s"
         ECP_ENDPOINT="${ECP_ENDPOINT}"
         PROGRESS_QUEUE_URL="%s"
         CONF
         """.formatted(region, tenantId, clusterName, accountId, region,
                      nodeRoleArn, publicSubnetId, privateSubnetId,
-                     securityGroupId,
-                     cni != null ? cni : "flannel",
-                     autoscaling != null ? autoscaling : "none",
-                     progressQueueUrl);
+                     securityGroupId, progressQueueUrl);
 }
 ```
 
@@ -240,8 +231,8 @@ The instance role permissions differ slightly for k3s:
 - **Add:** SSM PutParameter for `/express-compute/cluster/{name}/*` (Karpenter join credentials)
 
 ```java
-// Additional policy statement for k3s with Karpenter
-if ("k3s".equals(distribution) && "karpenter".equals(autoscaling)) {
+// Additional policy statement for k3s (Karpenter always enabled)
+if ("k3s".equals(distribution)) {
     statements.add(Statement.builder()
         .effect(Effect.ALLOW)
         .addAction("ssm:PutParameter")
@@ -261,13 +252,6 @@ if ("k3s".equals(distribution) && "karpenter".equals(autoscaling)) {
 @Option(names = "--distribution", defaultValue = "eks-d",
         description = "Cluster distribution: eks-d or k3s")
 String distribution;
-
-@Option(names = "--cni", description = "CNI plugin: flannel (k3s default) or vpc")
-String cni;
-
-@Option(names = "--autoscaling", defaultValue = "none",
-        description = "Autoscaling mode: none or karpenter")
-String autoscaling;
 ```
 
 ### 7.2 Request Body
@@ -277,14 +261,7 @@ private void runManaged() {
     var body = new LinkedHashMap<String, Object>();
     body.put("clusterName", name);
     body.put("distribution", distribution);       // NEW
-    body.put("arch", arch);
-    body.put("ec2PricingModel", ec2PricingModel);
-    body.put("k8sVersion", k8sVersion);
-    body.put("diskSizeGb", diskSizeGb);
-    body.put("assignElasticIp", assignElasticIp);
     if (sshCidr != null) body.put("sshCidr", sshCidr);
-    if (cni != null) body.put("cni", cni);           // NEW
-    if (autoscaling != null) body.put("autoscaling", autoscaling);  // NEW
     // ...
 }
 ```
@@ -292,25 +269,17 @@ private void runManaged() {
 ### 7.3 Validation
 
 ```java
-// k3s-specific validation
+// k3s-specific defaults
 if ("k3s".equals(distribution)) {
-    if (cni == null) cni = "flannel";  // k3s default
     if (diskSizeGb == 20) diskSizeGb = 15;  // smaller default for k3s
-}
-if ("eks-d".equals(distribution) && "flannel".equals(cni)) {
-    System.err.println("Error: Flannel CNI is not supported with EKS-D. Use --cni vpc or omit.");
-    System.exit(1);
 }
 ```
 
 ### 7.4 Example Usage
 
 ```bash
-# k3s with Flannel (simplest, cheapest)
+# k3s (same capabilities as EKS-D: VPC CNI, Karpenter, WI)
 ecp create-cluster my-k3s --distribution k3s --wait
-
-# k3s with VPC CNI + Karpenter (production)
-ecp create-cluster my-k3s --distribution k3s --cni vpc --autoscaling karpenter --wait
 
 # EKS-D (unchanged, default)
 ecp create-cluster my-eks --wait
@@ -367,9 +336,7 @@ public record CreateClusterRequest(
     int diskSizeGb,
     boolean assignElasticIp,
     String sshCidr,
-    String distribution,   // NEW — "eks-d" | "k3s"
-    String cni,            // NEW — "flannel" | "vpc"
-    String autoscaling     // NEW — "none" | "karpenter"
+    String distribution   // NEW — "eks-d" | "k3s"
 ) {}
 ```
 
@@ -448,11 +415,10 @@ Lambda as environment variables (or the Lambda reads them from SSM at runtime).
 
 ### TenantProvisioningService — delete path
 
-When deleting a k3s cluster with Karpenter, clean up the per-cluster SSM parameters:
+When deleting a k3s cluster, clean up the per-cluster SSM parameters:
 
 ```java
-if ("k3s".equals(tenant.effectiveDistribution())
-    && "karpenter".equals(tenant.autoscaling())) {
+if ("k3s".equals(tenant.effectiveDistribution())) {
     for (String suffix : List.of("/k3s-url", "/k3s-token", "/bootstrap-token")) {
         try {
             ssm.deleteParameter(DeleteParameterRequest.builder()
@@ -471,7 +437,7 @@ if ("k3s".equals(tenant.effectiveDistribution())
 
 | Test | Scope |
 |------|-------|
-| `TenantEc2ServiceTest` — k3s user data script | Verify `/opt/k3s-xpress/cluster.env` path, `CNI_MODE`, `AUTOSCALING_MODE` |
+| `TenantEc2ServiceTest` — k3s user data script | Verify `/opt/k3s-xpress/cluster.env` path, no CNI_MODE/AUTOSCALING_MODE |
 | `TenantEc2ServiceTest` — k3s AMI resolution | Verify SSM path includes `/k3s/` prefix |
 | `InfraNamingTest` | Verify `ssmAmiPath("k3s", "arm64", "1.35")` = `/express-compute/infra/ami/k3s/arm64/1.35` |
 | `TenantProvisioningServiceTest` — k3s skips DLM | Verify no `createLifecyclePolicy` call |
@@ -484,8 +450,8 @@ if ("k3s".equals(tenant.effectiveDistribution())
 |------|-------------|
 | `k3s-cluster-lifecycle.robot` | `create-cluster --distribution k3s` → verify ready → `delete-cluster` |
 | `k3s-workload-identity.robot` | Create association → verify pod gets credentials |
-| `k3s-vpc-cni.robot` | `--cni vpc` → verify pod has VPC IP |
-| `k3s-karpenter.robot` | `--autoscaling karpenter` → schedule pod → verify worker node joins |
+| `k3s-vpc-cni.robot` | Verify pod has VPC IP (always-on) |
+| `k3s-karpenter.robot` | Schedule pod → verify worker node joins |
 | `k3s-boot-time.robot` | Assert boot completes in < 120s |
 
 ---
@@ -494,15 +460,15 @@ if ("k3s".equals(tenant.effectiveDistribution())
 
 | Module | File | Change |
 |--------|------|--------|
-| `ecp-model` | `TenantItem.java` | Add `distribution`, `cni`, `autoscaling` fields |
+| `ecp-model` | `TenantItem.java` | Add `distribution` field |
 | `ecp-tenant-service` | `InfraNaming.java` | Add distribution-aware `ssmAmiPath()`, `ssmLaunchTemplatePath()` |
 | `ecp-tenant-service` | `TenantEc2Service.java` | k3s user data, AMI resolution, skip etcd volume |
 | `ecp-tenant-service` | `TenantProvisioningService.java` | Distribution routing, skip DLM, boot timeout, instance defaults |
 | `ecp-tenant-service` | `TenantIamService.java` | SSM PutParameter permission for Karpenter join creds |
-| `ecp-tenant-service` | `ClusterResource.java` | Accept distribution/cni/autoscaling in create request |
-| `ecp-cli` | `UnifiedCreateClusterCommand.java` | `--distribution`, `--cni`, `--autoscaling` flags |
+| `ecp-tenant-service` | `ClusterResource.java` | Accept distribution in create request |
+| `ecp-cli` | `UnifiedCreateClusterCommand.java` | `--distribution` flag |
 | `ecp-cli` | `ListClustersCommand.java` | Add DISTRIBUTION column |
 | `ecp-cli` | `DescribeClusterCommand.java` | Show distribution-specific fields |
-| `ecp-api` | Request/Response DTOs | Add distribution fields |
+| `ecp-api` | Request/Response DTOs | Add distribution field |
 | `infra` | CDK stack | k3s launch templates + SSM parameters |
 | `tests/uat` | New test suites | k3s lifecycle, WI, VPC CNI, Karpenter, boot time |
