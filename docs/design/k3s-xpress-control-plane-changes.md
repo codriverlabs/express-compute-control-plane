@@ -104,7 +104,7 @@ String amiId = ssm.getParameter(GetParameterRequest.builder()
 
 Add a k3s branch in `userDataScript()`. The key differences:
 - Writes to `/opt/k3s-xpress/cluster.env` (not `/opt/eks-d/cluster.env`)
-- Does NOT include EKS-D-specific fields (`POD_SUBNET`, `K8S_VERSION`)
+- Same fields as EKS-D (`POD_SUBNET`, `K8S_VERSION`, `NODE_IP`, etc.)
 
 ```java
 private String userDataScript(String tenantId, String clusterName,
@@ -126,7 +126,8 @@ private String userDataScript(String tenantId, String clusterName,
 }
 
 private String k3sUserDataScript(String tenantId, String clusterName,
-                                 String region, String nodeIp, String accountId,
+                                 String region, String k8sVersion, String nodeIp,
+                                 String accountId, String vpcCidr,
                                  String publicSubnetId, String privateSubnetId,
                                  String securityGroupId) {
     String nodeRoleArn = "arn:aws:iam::" + accountId + ":role/"
@@ -144,18 +145,23 @@ private String k3sUserDataScript(String tenantId, String clusterName,
         cat > /opt/k3s-xpress/cluster.env <<CONF
         TENANT_ID="%s"
         CLUSTER_NAME="%s"
+        NODE_IP="%s"
         AWS_ACCOUNT_ID="%s"
         AWS_REGION="%s"
         NODE_ROLE_ARN="%s"
+        CLUSTER_ENDPOINT="https://%s:6443"
+        POD_SUBNET="%s"
         PUBLIC_SUBNET_ID="%s"
         PRIVATE_SUBNET_ID="%s"
         SECURITY_GROUP_ID="%s"
         ECP_ENDPOINT="${ECP_ENDPOINT}"
+        ECP_API_URL="${ECP_ENDPOINT}/clusters/%s/assets"
+        K8S_VERSION="%s"
         PROGRESS_QUEUE_URL="%s"
         CONF
-        """.formatted(region, tenantId, clusterName, accountId, region,
-                     nodeRoleArn, publicSubnetId, privateSubnetId,
-                     securityGroupId, progressQueueUrl);
+        """.formatted(region, tenantId, clusterName, nodeIp, accountId, region,
+                     nodeRoleArn, nodeIp, vpcCidr, publicSubnetId, privateSubnetId,
+                     securityGroupId, clusterName, k8sVersion, progressQueueUrl);
 }
 ```
 
