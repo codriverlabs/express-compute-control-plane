@@ -45,7 +45,7 @@ class TenantResourceTest {
         lenient().when(provisioningService.countTenantsByOwner(any())).thenReturn(0);
         lenient().when(provisioningService.getMaxTenantsPerCaller()).thenReturn(5);
         lenient().when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any())).thenReturn("a1b2c3d4");
+            anyBoolean(), anyInt(), any(), any())).thenReturn("a1b2c3d4");
     }
 
     // -------------------------------------------------------------------------
@@ -121,7 +121,7 @@ class TenantResourceTest {
     @Test
     void quotaExceeded_unmanaged_notEnforced() {
         lenient().when(provisioningService.provision(any(), eq(false), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any())).thenReturn("a1b2c3d4");
+            anyBoolean(), anyInt(), any(), any())).thenReturn("a1b2c3d4");
         Response r = resource.createTenant(req("my-k3s", false), ctx);
         assertEquals(202, r.getStatus());
         verify(provisioningService, never()).countTenantsByOwner(any());
@@ -144,7 +144,7 @@ class TenantResourceTest {
     @Test
     void unmanagedTenant_skipsEC2Provisioning() {
         when(provisioningService.provision(any(), eq(false), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any())).thenReturn("a1b2c3d4");
+            anyBoolean(), anyInt(), any(), any())).thenReturn("a1b2c3d4");
         Response r = resource.createTenant(req("my-k3s", false), ctx);
         assertEquals(202, r.getStatus());
         @SuppressWarnings("unchecked")
@@ -195,7 +195,7 @@ class TenantResourceTest {
         Response r = resource.createTenant(req, ctx);
         assertEquals(202, r.getStatus());
         verify(provisioningService).provision(eq("my-cluster"), eq(true), any(), any(),
-            any(), any(), any(), anyBoolean(), anyInt(), eq("10.0.0.1/32"));
+            any(), any(), any(), anyBoolean(), anyInt(), eq("10.0.0.1/32"), any());
     }
 
     // -------------------------------------------------------------------------
@@ -233,7 +233,7 @@ class TenantResourceTest {
         Response r = resource.createTenant(req("my-cluster", true), ctx);
         assertEquals(202, r.getStatus());
         verify(provisioningService).provision(eq("my-cluster"), eq(true),
-            eq("arn:aws:iam::123:role/dev"), any(), any(), any(), any(), anyBoolean(), anyInt(), any());
+            eq("arn:aws:iam::123:role/dev"), any(), any(), any(), any(), anyBoolean(), anyInt(), any(), any());
     }
 
     // -------------------------------------------------------------------------
@@ -309,7 +309,7 @@ class TenantResourceTest {
             id, "cluster-" + id, true, "user@example.com", ownerArn,
             "2026-07-29T00:00:00Z", "2026-07-29T00:00:00Z",
             "running", "ready", 100, "i-abc123", "1.2.3.4",
-            null, null, "ondemand", null);
+            null, null, "ondemand", null, "eks-d");
     }
 
     private static TenantResource.CreateTenantRequest req(String clusterName, Boolean managed) {

@@ -35,7 +35,18 @@ public final class InfraNaming {
 
     // ── SSM Parameters ────────────────────────────────────────────────────────
 
+    /** Legacy AMI path (EKS-D, no distribution prefix). */
     public static String ssmAmiPath(String arch, String k8sVersion) {
         return SSM_PREFIX + "/ami/" + arch + "/" + k8sVersion;
+    }
+
+    /** Distribution-aware AMI path. */
+    public static String ssmAmiPath(ai.codriverlabs.ecp.model.Distribution distribution, String arch, String k8sVersion) {
+        return SSM_PREFIX + "/ami/" + distribution.ssmSegment() + "/" + arch + "/" + k8sVersion;
+    }
+
+    /** Distribution-aware launch template path. */
+    public static String ssmLaunchTemplatePath(ai.codriverlabs.ecp.model.Distribution distribution, String arch, String pricing) {
+        return SSM_PREFIX + "/launch-template/" + distribution.ssmSegment() + "/" + arch + "/" + pricing;
     }
 }

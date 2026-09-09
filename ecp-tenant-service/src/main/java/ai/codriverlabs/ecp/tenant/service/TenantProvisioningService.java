@@ -1,5 +1,6 @@
 package ai.codriverlabs.ecp.tenant.service;
 
+import ai.codriverlabs.ecp.model.Distribution;
 import ai.codriverlabs.ecp.tenant.InfraNaming;
 import ai.codriverlabs.ecp.tenant.TenantNaming;
 import ai.codriverlabs.ecp.tenant.exception.ClusterAlreadyExistsException;
@@ -92,6 +93,7 @@ public class TenantProvisioningService {
     @Inject SecretsManagerClient secretsManager;
     @Inject SqsClient sqs;
     @Inject CloudWatchEventsClient events;
+    @Inject software.amazon.awssdk.services.ssm.SsmClient ssm;
 
     @ConfigProperty(name = "express-compute.tenants-table")
     String tenantsTable;
@@ -134,7 +136,8 @@ public class TenantProvisioningService {
      */
     public String provision(String clusterName, boolean managed, String idcUserId, String ownerArn,
                             String arch, String ec2PricingModel, String k8sVersion,
-                            boolean assignElasticIp, int diskSizeGb, String sshCidr) {
+                            boolean assignElasticIp, int diskSizeGb, String sshCidr,
+                            Distribution distribution) {
         // Fail fast: check uniqueness before creating any AWS resources.
         // For managed mode this is critical — without it the stack creates subnets, IAM
         // roles, EC2, etc. before hitting DynamoDB, all of which need rolling back.
@@ -148,11 +151,11 @@ public class TenantProvisioningService {
         LOG.infof("Provisioning tenant: %s (cluster=%s, managed=%s)", tenantId, clusterName, managed);
 
         if (!managed) {
-            writeInitialRecord(tenantId, clusterName, false, idcUserId, ownerArn, createdAt, null, null, null);
+            writeInitialRecord(tenantId, clusterName, false, idcUserId, ownerArn, createdAt, null, null, null, distribution);
             return tenantId;
         }
 
-        String launchTemplateId = resolveLaunchTemplate(arch, ec2PricingModel);
+        String launchTemplateId = resolveLaunchTemplate(distribution, arch, ec2PricingModel);
         String region = System.getenv().getOrDefault("AWS_REGION", "us-east-1");
         String accountId = sts.getCallerIdentity(GetCallerIdentityRequest.builder().build()).account();
 
@@ -206,9 +209,11 @@ public class TenantProvisioningService {
             createEventBridgeRules(tenantId, queueArn);
             created.eventBridgeRulePrefix = tenantId;
 
-            // 8. DLM (daily etcd backup)
-            dlmService.createEtcdBackupPolicy(tenantId, clusterName, region);
-            created.dlmPolicyCreated = true;
+            // 8. DLM (daily etcd/state backup — EKS-D only, k3s uses smaller data volume with separate snapshots)
+            if (distribution == Distribution.EKS_D) {
+                dlmService.createEtcdBackupPolicy(tenantId, clusterName, region);
+                created.dlmPolicyCreated = true;
+            }
 
             // 9. EC2 instance launch
             TenantEc2Service.Ec2Result ec2Result = ec2Service.launchInstance(
@@ -217,14 +222,15 @@ public class TenantProvisioningService {
                 iamResult.instanceProfileName(), TenantNaming.keyPairName(tenantId),
                 region, k8sVersion, assignElasticIp, diskSizeGb, arch,
                 network.controlPlaneIp(), accountId, network.vpcCidr(),
-                network.publicSubnetId(), network.privateSubnetId(), created);
+                network.publicSubnetId(), network.privateSubnetId(),
+                distribution, created);
             created.instanceId = ec2Result.instanceId();
             created.eipAllocationId = ec2Result.eipAllocationId();
 
             // 9. Write initial DynamoDB state
             writeInitialRecord(tenantId, clusterName, true, idcUserId, ownerArn, createdAt,
                 ec2Result.instanceId(), sshKeyArn,
-                ec2PricingModel);
+                ec2PricingModel, distribution);
             if (ec2Result.eipAllocationId() != null) {
                 dynamoDb.updateItem(UpdateItemRequest.builder()
                     .tableName(tenantsTable)
@@ -244,13 +250,15 @@ public class TenantProvisioningService {
 
     private void writeInitialRecord(String tenantId, String clusterName, boolean managed,
                                     String idcUserId, String ownerArn, String createdAt,
-                                    String instanceId, String sshKeyArn, String ec2PricingModel) {
+                                    String instanceId, String sshKeyArn, String ec2PricingModel,
+                                    Distribution distribution) {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("tenantId",     AttributeValue.fromS(tenantId));
         item.put("clusterName",  AttributeValue.fromS(clusterName));
         item.put("managed",      AttributeValue.fromS(String.valueOf(managed)));
         item.put("createdAt",    AttributeValue.fromS(createdAt));
         item.put("updatedAt",    AttributeValue.fromS(createdAt));
+        item.put("distribution", AttributeValue.fromS(distribution.value()));
         if (idcUserId != null)      item.put("idcUserId",  AttributeValue.fromS(idcUserId));
         if (ownerArn != null)       item.put("ownerArn",   AttributeValue.fromS(ownerArn));
         if (managed) {
@@ -928,7 +936,14 @@ public class TenantProvisioningService {
             .queueUrl(queueUrl).build());
     }
 
-    private String resolveLaunchTemplate(String arch, String pricingModel) {
+    private String resolveLaunchTemplate(Distribution distribution, String arch, String pricingModel) {
+        if (distribution == Distribution.K3S) {
+            // k3s launch templates are at a different SSM path — resolve at runtime
+            String ssmPath = InfraNaming.ssmLaunchTemplatePath(distribution, arch, pricingModel);
+            return ssm.getParameter(software.amazon.awssdk.services.ssm.model.GetParameterRequest.builder()
+                .name(ssmPath).build()).parameter().value();
+        }
+        // EKS-D: use pre-resolved config properties (legacy path)
         return switch (arch + "/" + pricingModel) {
             case "arm64/ondemand" -> ltArm64Ondemand;
             case "arm64/spot" -> ltArm64Spot;
@@ -1031,7 +1046,7 @@ public class TenantProvisioningService {
         }
 
         // Also write tenant record for consistency
-        writeInitialRecord(tenantId, clusterName, false, ownerArn, ownerArn, Instant.now().toString(), null, null, null);
+        writeInitialRecord(tenantId, clusterName, false, ownerArn, ownerArn, Instant.now().toString(), null, null, null, Distribution.EKS_D);
 
         LOG.infof("Registered self-managed cluster %s (tenant %s, type %s)", clusterName, tenantId,
             clusterType != null ? clusterType : "MANAGED");
@@ -1100,7 +1115,8 @@ public class TenantProvisioningService {
             s(item, "eipAllocationId"),
             s(item, "sshKeySecretArn"),
             s(item, "ec2PricingModel"),
-            s(item, "error")
+            s(item, "error"),
+            s(item, "distribution")
         );
     }
 

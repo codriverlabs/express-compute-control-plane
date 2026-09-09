@@ -39,6 +39,9 @@ public class UnifiedCreateClusterCommand implements Runnable {
     @Option(names = "--arch", defaultValue = "arm64", description = "CPU architecture: arm64 or x86_64")
     String arch;
 
+    @Option(names = "--distribution", required = true, description = "Cluster distribution: eks-d or k3s")
+    String distribution;
+
     @Option(names = "--pricing", defaultValue = "spot", description = "EC2 pricing: spot or ondemand")
     String ec2PricingModel;
 
@@ -97,6 +100,7 @@ public class UnifiedCreateClusterCommand implements Runnable {
         try {
             var body = new LinkedHashMap<String, Object>();
             body.put("clusterName", name);
+            body.put("distribution", distribution);
             body.put("arch", arch);
             body.put("ec2PricingModel", ec2PricingModel);
             body.put("k8sVersion", k8sVersion);
