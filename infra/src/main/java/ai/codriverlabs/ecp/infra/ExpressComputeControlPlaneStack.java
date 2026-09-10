@@ -499,6 +499,8 @@ public class ExpressComputeControlPlaneStack extends Stack {
                     String.format("arn:aws:ssm:%s:%s:parameter%s",
                         Stack.of(this).getRegion(), Stack.of(this).getAccount(), endpointParamName),
                     String.format("arn:aws:ssm:%s:%s:parameter/express-compute/infra/ami/*",
+                        Stack.of(this).getRegion(), Stack.of(this).getAccount()),
+                    String.format("arn:aws:ssm:%s:%s:parameter/express-compute/infra/launch-template/*",
                         Stack.of(this).getRegion(), Stack.of(this).getAccount())))
                 .build());
         } // end deployTenantService
