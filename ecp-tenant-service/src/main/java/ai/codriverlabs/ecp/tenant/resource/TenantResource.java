@@ -98,11 +98,13 @@ public class TenantResource {
                 String id = provisioningService.provision(request.clusterName, true, idcUserId, callerArn,
                     arch, pricingModel, k8sVersion,
                     Boolean.TRUE.equals(request.assignElasticIp),
-                    request.diskSizeGb != null ? request.diskSizeGb : 20, sshCidr);
+                    request.diskSizeGb != null ? request.diskSizeGb : 20, sshCidr,
+                    ai.codriverlabs.ecp.model.Distribution.EKS_D);
                 return Response.accepted(Map.of("tenantId", id, "clusterName", request.clusterName, "managed", true)).build();
             } else {
                 String id = provisioningService.provision(request.clusterName, false, idcUserId, callerArn,
-                    null, null, null, false, 0, null);
+                    null, null, null, false, 0, null,
+                    ai.codriverlabs.ecp.model.Distribution.EKS_D);
                 return Response.accepted(Map.of("tenantId", id, "clusterName", request.clusterName, "managed", false)).build();
             }
         } catch (IllegalArgumentException e) {

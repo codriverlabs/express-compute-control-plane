@@ -30,5 +30,7 @@ public record CreateClusterRequest(
         @JsonProperty("ecsClusterName") String ecsClusterName,
         @JsonProperty("clusterArn") String clusterArn,
         @JsonProperty("region") String region,
-        @JsonProperty("taskRoleArn") String taskRoleArn) {
+        @JsonProperty("taskRoleArn") String taskRoleArn,
+        // k3s-Xpress support (appended to preserve positional compatibility)
+        @JsonProperty("distribution") String distribution) {
 }

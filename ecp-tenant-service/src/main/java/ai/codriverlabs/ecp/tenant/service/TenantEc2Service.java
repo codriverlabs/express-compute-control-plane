@@ -1,5 +1,6 @@
 package ai.codriverlabs.ecp.tenant.service;
 
+import ai.codriverlabs.ecp.model.Distribution;
 import ai.codriverlabs.ecp.tenant.InfraNaming;
 import ai.codriverlabs.ecp.tenant.TenantNaming;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -40,15 +41,16 @@ public class TenantEc2Service {
                                    boolean assignElasticIp, int diskSizeGb, String arch,
                                    String privateIp, String accountId, String vpcCidr,
                                    String publicSubnetId, String privateSubnetId,
+                                   Distribution distribution,
                                    TenantProvisioningService.ProvisionedResources created) {
 
         String amiId = ssm.getParameter(GetParameterRequest.builder()
-            .name(InfraNaming.ssmAmiPath(arch, k8sVersion))
+            .name(InfraNaming.ssmAmiPath(distribution, arch, k8sVersion))
             .build()).parameter().value();
 
         String userData = Base64.getEncoder().encodeToString(userDataScript(
             tenantId, clusterName, region, k8sVersion, privateIp, accountId, arch, vpcCidr,
-            publicSubnetId, privateSubnetId, securityGroupId).getBytes());
+            publicSubnetId, privateSubnetId, securityGroupId, distribution).getBytes());
 
         var runRequest = RunInstancesRequest.builder()
             .imageId(amiId)
@@ -133,19 +135,23 @@ public class TenantEc2Service {
                                   String region, String k8sVersion, String nodeIp,
                                   String accountId, String arch, String vpcCidr,
                                   String publicSubnetId, String privateSubnetId,
-                                  String securityGroupId) {
+                                  String securityGroupId, Distribution distribution) {
         String nodeRoleArn = "arn:aws:iam::" + accountId + ":role/" + TenantNaming.roleName(tenantId);
         String progressQueueUrl = "https://sqs." + region + ".amazonaws.com/" + accountId + "/"
             + TenantNaming.progressQueueName(tenantId);
+
+        String stateDir = distribution.stateDir();
+        String envFile = distribution.clusterEnvPath();
+
         return """
             #!/bin/bash
-            mkdir -p /opt/eks-d
+            mkdir -p %s
             ECP_ENDPOINT=$(aws ssm get-parameter \
               --name /express-compute/control-plane/api/endpoint \
               --region %s \
               --query Parameter.Value \
               --output text 2>/dev/null || echo "")
-            cat > /opt/eks-d/cluster.env <<CONF
+            cat > %s <<CONF
             TENANT_ID="%s"
             CLUSTER_NAME="%s"
             NODE_IP="%s"
@@ -162,7 +168,8 @@ public class TenantEc2Service {
             K8S_VERSION="%s"
             PROGRESS_QUEUE_URL="%s"
             CONF
-            """.formatted(region, tenantId, clusterName, nodeIp, accountId, region,
+            """.formatted(stateDir, region, envFile,
+                         tenantId, clusterName, nodeIp, accountId, region,
                          nodeRoleArn, nodeIp, vpcCidr, publicSubnetId, privateSubnetId,
                          securityGroupId, clusterName, k8sVersion, progressQueueUrl);
     }

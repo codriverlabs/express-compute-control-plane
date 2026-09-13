@@ -2,6 +2,7 @@ package ai.codriverlabs.ecp.tenant.resource;
 
 import ai.codriverlabs.ecp.api.tenant.ClusterLifecycleApi;
 import ai.codriverlabs.ecp.api.tenant.CreateClusterRequest;
+import ai.codriverlabs.ecp.model.Distribution;
 import ai.codriverlabs.ecp.tenant.exception.ClusterAlreadyExistsException;
 import ai.codriverlabs.ecp.tenant.model.TenantItem;
 import ai.codriverlabs.ecp.tenant.service.TenantProvisioningService;
@@ -91,6 +92,10 @@ public class ClusterResource implements ClusterLifecycleApi {
         String arch = request.arch() != null ? request.arch() : "arm64";
         String pricing = request.ec2PricingModel() != null ? request.ec2PricingModel() : "spot";
         String k8sVersion = request.k8sVersion() != null ? request.k8sVersion() : "1.35";
+        Distribution distribution = Distribution.fromString(request.distribution());
+        if (distribution == null) {
+            return error(400, "InvalidParameterException", "distribution is required (eks-d or k3s)");
+        }
 
         if (!arch.equals("arm64") && !arch.equals("x86_64"))
             return error(400, "InvalidParameterException", "arch must be arm64 or x86_64");
@@ -105,12 +110,15 @@ public class ClusterResource implements ClusterLifecycleApi {
             sshCidr = sourceIp + "/32";
         }
 
+        int diskSizeGb = request.diskSizeGb() != null ? request.diskSizeGb() : distribution.defaultRootDiskGb();
+
         String id = provisioningService.provision(request.clusterName(), true, idcUserId, callerArn,
             arch, pricing, k8sVersion,
             Boolean.TRUE.equals(request.assignElasticIp()),
-            request.diskSizeGb() != null ? request.diskSizeGb() : 20, sshCidr);
+            diskSizeGb, sshCidr, distribution);
 
-        return Response.accepted(Map.of("tenantId", id, "clusterName", request.clusterName(), "managed", true)).build();
+        return Response.accepted(Map.of("tenantId", id, "clusterName", request.clusterName(),
+            "managed", true, "distribution", distribution.value())).build();
     }
 
     private Response createSelfManaged(CreateClusterRequest request, String callerArn) {

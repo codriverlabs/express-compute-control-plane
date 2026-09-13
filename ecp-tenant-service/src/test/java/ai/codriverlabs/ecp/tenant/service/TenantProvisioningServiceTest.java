@@ -1,4 +1,5 @@
 package ai.codriverlabs.ecp.tenant.service;
+import ai.codriverlabs.ecp.model.Distribution;
 
 import ai.codriverlabs.ecp.tenant.model.TenantItem;
 import ai.codriverlabs.ecp.tenant.exception.ClusterAlreadyExistsException;
@@ -54,7 +55,7 @@ class TenantProvisioningServiceTest {
         ArgumentCaptor<PutItemRequest> cap = ArgumentCaptor.forClass(PutItemRequest.class);
 
         String id = service.provision("my-k3s", false, "user@example.com", "arn:aws:iam::123:role/dev",
-            null, null, null, false, 0, null);
+            null, null, null, false, 0, null, Distribution.EKS_D);
 
         assertNotNull(id);
         assertEquals(8, id.length());
@@ -72,7 +73,7 @@ class TenantProvisioningServiceTest {
     @Test
     void provision_unmanaged_noAwsInfrastructureCalls() {
         service.provision("my-k3s", false, "user@example.com", "arn:aws:iam::123:role/dev",
-            null, null, null, false, 0, null);
+            null, null, null, false, 0, null, Distribution.EKS_D);
 
         // Only DynamoDB calls expected:
         //   getItem  — clusterExists() uniqueness check
@@ -86,7 +87,7 @@ class TenantProvisioningServiceTest {
     @Test
     void provision_unmanaged_storesBothTimestamps() {
         ArgumentCaptor<PutItemRequest> cap = ArgumentCaptor.forClass(PutItemRequest.class);
-        service.provision("my-k3s", false, "user@example.com", null, null, null, null, false, 0, null);
+        service.provision("my-k3s", false, "user@example.com", null, null, null, null, false, 0, null, Distribution.EKS_D);
 
         verify(dynamoDb).putItem(cap.capture());
         Map<String, AttributeValue> item = cap.getValue().item();
@@ -97,8 +98,8 @@ class TenantProvisioningServiceTest {
 
     @Test
     void provision_unmanaged_differentUsersGetDifferentIds() {
-        String id1 = service.provision("cluster-a", false, "alice@example.com", null, null, null, null, false, 0, null);
-        String id2 = service.provision("cluster-b", false, "bob@example.com",   null, null, null, null, false, 0, null);
+        String id1 = service.provision("cluster-a", false, "alice@example.com", null, null, null, null, false, 0, null, Distribution.EKS_D);
+        String id2 = service.provision("cluster-b", false, "bob@example.com",   null, null, null, null, false, 0, null, Distribution.EKS_D);
         assertNotEquals(id1, id2);
     }
 
@@ -185,7 +186,7 @@ class TenantProvisioningServiceTest {
         ClusterAlreadyExistsException ex = assertThrows(
             ClusterAlreadyExistsException.class,
             () -> service.provision("my-k3s", false, "user@example.com",
-                "arn:aws:iam::123:role/dev", null, null, null, false, 0, null));
+                "arn:aws:iam::123:role/dev", null, null, null, false, 0, null, Distribution.EKS_D));
 
         assertEquals("my-k3s", ex.getClusterName());
         assertTrue(ex.getMessage().contains("my-k3s"));
@@ -203,7 +204,7 @@ class TenantProvisioningServiceTest {
 
         assertDoesNotThrow(() ->
             service.provision("brand-new", false, "user@example.com",
-                "arn:aws:iam::123:role/dev", null, null, null, false, 0, null));
+                "arn:aws:iam::123:role/dev", null, null, null, false, 0, null, Distribution.EKS_D));
 
         verify(dynamoDb, atLeastOnce()).putItem(any(PutItemRequest.class));
     }

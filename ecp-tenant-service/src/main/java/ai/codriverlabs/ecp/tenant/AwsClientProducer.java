@@ -7,6 +7,7 @@ import software.amazon.awssdk.services.kms.KmsClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.cloudwatchevents.CloudWatchEventsClient;
+import software.amazon.awssdk.services.ssm.SsmClient;
 
 @ApplicationScoped
 public class AwsClientProducer {
@@ -25,4 +26,7 @@ public class AwsClientProducer {
 
     @Produces @ApplicationScoped
     CloudWatchEventsClient cloudWatchEventsClient() { return CloudWatchEventsClient.create(); }
+
+    @Produces @ApplicationScoped
+    SsmClient ssmClient() { return SsmClient.create(); }
 }

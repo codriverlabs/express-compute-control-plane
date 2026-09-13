@@ -55,7 +55,7 @@ class ClusterResourceTest {
         when(provisioningService.countTenantsByOwner(any())).thenReturn(0);
         when(provisioningService.getMaxTenantsPerCaller()).thenReturn(5);
         when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any()))
+            anyBoolean(), anyInt(), any(), any()))
             .thenThrow(new ClusterAlreadyExistsException("my-cluster"));
 
         Response r = resource.createCluster(managedReq("my-cluster"));
@@ -70,7 +70,7 @@ class ClusterResourceTest {
         when(provisioningService.countTenantsByOwner(any())).thenReturn(0);
         when(provisioningService.getMaxTenantsPerCaller()).thenReturn(5);
         when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any()))
+            anyBoolean(), anyInt(), any(), any()))
             .thenThrow(new ClusterAlreadyExistsException("prod-cluster"));
 
         Response r = resource.createCluster(managedReq("prod-cluster"));
@@ -115,7 +115,7 @@ class ClusterResourceTest {
         when(provisioningService.countTenantsByOwner(any())).thenReturn(0);
         when(provisioningService.getMaxTenantsPerCaller()).thenReturn(5);
         when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any())).thenReturn("abc123");
+            anyBoolean(), anyInt(), any(), any())).thenReturn("abc123");
 
         Response r = resource.createCluster(managedReq("new-cluster"));
 
@@ -203,7 +203,7 @@ class ClusterResourceTest {
         when(provisioningService.countTenantsByOwner(any())).thenReturn(0);
         when(provisioningService.getMaxTenantsPerCaller()).thenReturn(5);
         when(provisioningService.provision(any(), anyBoolean(), any(), any(), any(), any(), any(),
-            anyBoolean(), anyInt(), any())).thenReturn("tenant123");
+            anyBoolean(), anyInt(), any(), any())).thenReturn("tenant123");
 
         Response r = resource.createCluster(managedReq("managed-cluster"));
 
@@ -230,14 +230,14 @@ class ClusterResourceTest {
     private static ai.codriverlabs.ecp.api.tenant.CreateClusterRequest managedReq(String clusterName) {
         return new ai.codriverlabs.ecp.api.tenant.CreateClusterRequest(
                 clusterName, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, "eks-d");
     }
 
     private static ai.codriverlabs.ecp.api.tenant.CreateClusterRequest selfManagedReq(String clusterName) {
         return new ai.codriverlabs.ecp.api.tenant.CreateClusterRequest(
                 clusterName, null, null, null, null, null, null,
                 "{\"keys\":[]}", "https://kubernetes.default.svc",
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     @SuppressWarnings("unchecked")

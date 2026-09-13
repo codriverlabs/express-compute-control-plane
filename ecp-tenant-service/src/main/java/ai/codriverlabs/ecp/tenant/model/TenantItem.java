@@ -31,5 +31,7 @@ public record TenantItem(
     String eipAllocationId,
     String sshKeySecretArn,
     String ec2PricingModel,
-    String error
+    String error,
+    // k3s-Xpress support (appended to preserve positional compatibility)
+    String distribution
 ) {}
