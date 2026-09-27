@@ -24,13 +24,34 @@ public class EcpApiClient {
     String endpoint;
     String region;
     AwsSigV4Signer signer;
+    /**
+     * Populated instead of {@code signer} when {@link AwsSigV4Signer#create} fails, so the
+     * actionable "no credentials found" message can be surfaced at the point a signed call is
+     * actually attempted, rather than crashing CDI bean construction for every CLI command
+     * (including ones that never need to sign a request).
+     */
+    RuntimeException signerInitFailure;
 
     @PostConstruct
     void init() {
         EcpConfig config = new EcpConfig();
         this.endpoint = config.getEndpoint();
         this.region = config.getRegion();
-        this.signer = AwsSigV4Signer.create(region);
+        try {
+            this.signer = AwsSigV4Signer.create(region);
+        } catch (RuntimeException e) {
+            this.signerInitFailure = e;
+        }
+    }
+
+    /** Returns the signer, or throws the original create() failure if one occurred. */
+    AwsSigV4Signer requireSigner() {
+        if (signer == null) {
+            throw signerInitFailure != null
+                    ? signerInitFailure
+                    : new IllegalStateException("SigV4 signer was not initialized");
+        }
+        return signer;
     }
 
     public String post(String path, String body) {
@@ -47,8 +68,7 @@ public class EcpApiClient {
             var builder = HttpRequest.newBuilder().uri(uri)
                 .method("POST", HttpRequest.BodyPublishers.ofString(body));
             AwsSigV4Signer fnSigner = AwsSigV4Signer.create(region);
-            if (fnSigner != null) fnSigner.sign(builder, "POST", uri, body, "lambda");
-            else builder.header("Content-Type", "application/json");
+            fnSigner.sign(builder, "POST", uri, body, "lambda");
             var response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
                 String b = response.body();
@@ -71,7 +91,7 @@ public class EcpApiClient {
             URI uri = URI.create(url);
             var builder = HttpRequest.newBuilder().uri(uri).DELETE();
             AwsSigV4Signer fnSigner = AwsSigV4Signer.create(region);
-            if (fnSigner != null) fnSigner.sign(builder, "DELETE", uri, null, "lambda");
+            fnSigner.sign(builder, "DELETE", uri, null, "lambda");
             var response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
                 String b = response.body();
@@ -206,8 +226,8 @@ public class EcpApiClient {
             }
 
             // Sign management API requests (not /assets which uses token auth)
-            if (signer != null && !path.contains("/assets")) {
-                signer.sign(builder, method, uri, body, "execute-api");
+            if (!path.contains("/assets")) {
+                requireSigner().sign(builder, method, uri, body, "execute-api");
             } else {
                 builder.header("Content-Type", "application/json");
             }

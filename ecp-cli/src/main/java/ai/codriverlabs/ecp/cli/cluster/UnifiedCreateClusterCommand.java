@@ -204,7 +204,7 @@ public class UnifiedCreateClusterCommand implements Runnable {
                 .uri(uri).header("Accept", "text/event-stream").GET();
 
             AwsSigV4Signer signer = AwsSigV4Signer.create(resolvedRegion);
-            if (signer != null) signer.sign(builder, "GET", uri, null, "lambda");
+            signer.sign(builder, "GET", uri, null, "lambda");
 
             HttpResponse<java.io.InputStream> response = HttpClient.newHttpClient()
                 .send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());

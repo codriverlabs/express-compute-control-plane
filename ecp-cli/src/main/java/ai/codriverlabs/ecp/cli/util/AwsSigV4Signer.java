@@ -15,37 +15,55 @@ import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 
 /**
- * AWS SigV4 signer backed by the AWS SDK DefaultCredentialsProvider.
+ * AWS SigV4 signer backed by an {@link AwsCredentialsProvider}.
  * Handles env vars, ~/.aws/credentials, EC2 instance profile (IMDS), ECS, SSO, etc.
  *
- * Credentials are resolved once at create() time. Per-call refresh is not needed
- * for short-lived CLI sessions.
+ * <p>Credentials are resolved on every {@code sign(...)} call, not cached at
+ * {@code create()} time. {@link DefaultCredentialsProvider} already caches internally and
+ * refreshes ahead of expiry, so this is a field read on the common path, not a fresh STS
+ * round trip. Caching the resolved {@code AwsCredentials} instead of the provider would work
+ * for a short-lived CLI invocation but silently sign with expired credentials after roughly
+ * an hour in any longer-lived process (e.g. an MCP server) built on this class.
  */
 public class AwsSigV4Signer {
 
-    private final AwsCredentials credentials;
+    private final AwsCredentialsProvider credentialsProvider;
     private final Region region;
     private final Aws4Signer signer = Aws4Signer.create();
 
-    AwsSigV4Signer(AwsCredentials credentials, Region region) {
-        this.credentials = credentials;
+    AwsSigV4Signer(AwsCredentialsProvider credentialsProvider, Region region) {
+        this.credentialsProvider = credentialsProvider;
         this.region = region;
     }
 
+    /** Test-only convenience constructor around a fixed set of credentials. */
+    AwsSigV4Signer(AwsCredentials credentials, Region region) {
+        this(software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(credentials),
+                region);
+    }
+
     /**
-     * Creates a signer by resolving credentials synchronously.
-     * Returns null if no credentials are available.
+     * Creates a signer backed by the standard AWS SDK default credentials chain.
+     *
+     * @throws IllegalStateException if no credentials can be resolved from the default chain.
+     *     Previously this returned {@code null} on any failure, which led every call site to
+     *     silently send unsigned requests; that produced an opaque 403 that read like an IAM
+     *     permissions problem rather than "no credentials on this machine."
      */
     public static AwsSigV4Signer create(String region) {
+        AwsCredentialsProvider provider = DefaultCredentialsProvider.builder()
+                .reuseLastProviderEnabled(true)
+                .build();
         try {
-            AwsCredentialsProvider provider = DefaultCredentialsProvider.builder()
-                    .reuseLastProviderEnabled(true)
-                    .build();
-            AwsCredentials creds = provider.resolveCredentials();
-            return new AwsSigV4Signer(creds, Region.of(region));
+            // Resolve once up front so misconfiguration is reported at create() time, with the
+            // same actionable message every call site already surfaces via its existing
+            // try/catch — not as a signature failure deep inside an HTTP call.
+            provider.resolveCredentials();
         } catch (Exception e) {
-            return null;
+            throw new IllegalStateException(
+                    "No AWS credentials found; run 'aws sso login' or set AWS_PROFILE.", e);
         }
+        return new AwsSigV4Signer(provider, Region.of(region));
     }
 
     public void sign(HttpRequest.Builder builder, String method, URI uri,
@@ -80,7 +98,7 @@ public class AwsSigV4Signer {
 
         var signed = signer.sign(sdkRequestBuilder.build(),
             Aws4SignerParams.builder()
-                .awsCredentials(credentials)
+                .awsCredentials(credentialsProvider.resolveCredentials())
                 .signingRegion(region)
                 .signingName(service)
                 .build());

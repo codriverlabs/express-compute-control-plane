@@ -121,7 +121,7 @@ public class CreateTenantCommand implements Runnable {
                 .GET();
 
             AwsSigV4Signer signer = AwsSigV4Signer.create(region);
-            if (signer != null) signer.sign(builder, "GET", uri, null, "lambda");
+            signer.sign(builder, "GET", uri, null, "lambda");
 
             HttpResponse<java.io.InputStream> response = HttpClient.newHttpClient()
                 .send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
