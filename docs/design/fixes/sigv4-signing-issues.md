@@ -299,3 +299,27 @@ Implemented on branch `fix/sigv4-signing-issues`, in two commits:
   was temporarily reverted, the relevant test was re-run and confirmed to fail with a message
   pointing at the exact regression, then the fix was restored and the test re-confirmed passing —
   so the new tests are known to catch the bugs they were written for, not just pass incidentally.
+
+## Follow-up: closing the "real JAX-RS runtime" gap
+
+The tests above exercise `SigV4ClientRequestFilter` against a hand-written `ClientRequestContext`
+test double, which proves the filter's own logic is internally consistent but not that a *real*
+JAX-RS `MessageBodyWriter` writes the substituted `byte[]` entity exactly as-is afterward — the
+specific ordering subtlety Finding 1 was about in the first place. Closed with a second test class,
+`SigV4ClientRequestFilterJaxRsIntegrationTest`, using a real Jersey `Client` (test-scope-only
+dependency — `ecp-api` has no JAX-RS client implementation at compile/runtime scope, by design) and
+a plain JDK `HttpServer` to capture the exact bytes received on the wire.
+
+Reverting the fix and re-running this test surfaced something not previously verified: without
+`materializeEntity()` calling `setEntity(byte[])`, Jersey doesn't merely sign the wrong bytes — it
+fails outright with `MessageBodyProviderNotFound`, because `ecp-api` deliberately has no
+`jackson-jaxrs` provider registered for POJO serialization. The filter's serialization step is
+therefore not only a signature-correctness fix but the reason a POJO body can be sent through this
+filter *at all* in a real JAX-RS runtime without every consumer having to separately register its
+own JSON provider.
+
+The CLI-side fix (Finding 2/3) was separately verified against the live deployed service (not a
+mock) by running the native `ecp-cli` binary directly: `list-clusters` with valid credentials
+succeeded end-to-end against `https://express-compute.codriverlabs.ai`, and the same binary with
+`AWS_PROFILE`/`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_SESSION_TOKEN` unset printed the
+exact actionable message Finding 3 exists to produce.

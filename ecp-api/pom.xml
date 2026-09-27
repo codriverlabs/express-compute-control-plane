@@ -70,6 +70,23 @@
       <version>6.1.3</version>
       <scope>test</scope>
     </dependency>
+    <!-- Real JAX-RS client runtime, test-scope only: exercises
+         SigV4ClientRequestFilter through an actual ClientRequestFilter/MessageBodyWriter
+         pipeline instead of a hand-written test double, so the byte-for-byte
+         sent-equals-signed invariant is verified against real JAX-RS serialization
+         ordering, not just against our own assumptions about it. -->
+    <dependency>
+      <groupId>org.glassfish.jersey.core</groupId>
+      <artifactId>jersey-client</artifactId>
+      <version>3.0.18</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.inject</groupId>
+      <artifactId>jersey-hk2</artifactId>
+      <version>3.0.18</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
