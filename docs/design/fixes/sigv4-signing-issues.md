@@ -2,14 +2,19 @@
 
 ## Status
 
+**Implemented.** Findings 1–3 and Finding 4 (for `SigV4ClientRequestFilter`) are fixed, tested,
+and verified end-to-end (unit tests, `mvn test` across all 11 modules, native `ecp-cli` build and
+runtime smoke test). See [Outcome](#outcome) at the end of this document for what was actually
+done, what was deliberately deferred, and why.
+
 Reported while building an equivalent SigV4 client filter for a separate project
 (`scaleout-build-maven-plugin`), which deliberately did not copy this implementation.
 Source findings: `sigv4-signing-findings.md` / `sigv4-reference-design.md` (external report,
 inspected against commit `f33b1f3`). Verified against current `main` on 2026-09-27 — all four
-findings still reproduce exactly as described; nothing here has been fixed yet.
+findings still reproduced exactly as described before this fix; nothing had been fixed yet.
 
-None of this is a live outage. Finding 1 is dormant dead code today; it becomes a breaking bug
-the moment a long-lived client (the planned `docs/roadmap/ecp-mcp-server.md`) starts using
+None of this was a live outage. Finding 1 was dormant dead code; it would have become a breaking
+bug the moment a long-lived client (the planned `docs/roadmap/ecp-mcp-server.md`) started using
 `ecp-api`'s client-side classes.
 
 ## Problem
@@ -214,3 +219,83 @@ Priority order, matching the source report:
 - Whether to offer a non-JAX-RS signing variant for `java.net.http` callers, so the MCP server
   does not have to re-derive the same logic a third time. The signing logic is identical for both
   and the JAX-RS ordering problem does not apply outside JAX-RS.
+
+## Outcome
+
+Implemented on branch `fix/sigv4-signing-issues`, in two commits:
+
+1. **Finding 1 + 4, in `ecp-api`'s `SigV4ClientRequestFilter`.** `extractBody()` was replaced with
+   `materializeEntity()`, which serializes non-`String`/`byte[]` entities with Jackson and writes
+   the resulting bytes back onto the request via `setEntity()`, so the signed bytes and the sent
+   bytes cannot diverge. Migrated from `Aws4Signer`/`Aws4SignerParams` to `AwsV4HttpSigner` (API
+   verified against the `http-auth-aws:2.54.16` jar with `javap` before writing code against it —
+   `SERVICE_SIGNING_NAME` on `AwsV4FamilyHttpSigner`, `REGION_NAME` on `AwsV4HttpSigner`, exactly
+   as the source report described). Region now fails fast with an actionable message instead of
+   silently defaulting to `us-east-1`. Added a package-visible constructor accepting an explicit
+   `AwsCredentialsProvider` so the new regression tests use static test credentials rather than
+   the machine's real credential chain, per the source report's testing guidance.
+
+   Six new tests in `ecp-api/src/test/java/.../SigV4ClientRequestFilterTest.java`, including the
+   report's own suggested regression test (a POJO-bodied request and a bodiless request must sign
+   differently — verified this fails under the pre-fix code by temporarily reintroducing the bug
+   and re-running the suite, then reverting). `ecp-api` had no test infrastructure before this
+   change; added `junit-jupiter` (matching the version other simple-JUnit modules in this repo
+   pin) and `jackson-databind` (needed by `materializeEntity()` itself, not only tests).
+
+2. **Finding 2 + 3, across `ecp-cli`.** `AwsSigV4Signer` now stores the `AwsCredentialsProvider`
+   and calls `resolveCredentials()` inside every `sign(...)` call instead of once at `create()`
+   time — exactly the provider-not-STS-client fix described above, not a new STS client.
+   `create()` now throws `IllegalStateException` with an actionable message instead of returning
+   `null`. All 7 call sites' `if (signer != null)` / `if (signer == null)` guards were removed;
+   each was already covered by an appropriate existing `catch` (either a top-level
+   `System.err.println("Error: ...")` + `System.exit(1)`, or an intentional best-effort
+   catch-and-return-null in `EcpConfig`'s SSM fallback and `ClusterAccessHelper`'s optional
+   access-info lookup), so removing the dead guards changed behavior only for the case that was
+   actually broken. `EcpApiClient.init()` is a CDI `@PostConstruct` shared by every CLI command,
+   so it defers a `create()` failure into a `signerInitFailure` field and re-throws it lazily via
+   `requireSigner()`, only when a signed call is actually attempted — letting `init()` itself
+   throw would have crashed bean construction for every command, including ones that never sign a
+   request.
+
+   Five new/updated tests in `AwsSigV4SignerTest` (including a credential-rotation test proving
+   `resolveCredentials()` is called once per `sign()` call, not cached — verified this fails under
+   the pre-fix cached-field pattern by temporarily reintroducing it) and two new tests in
+   `EcpApiClientTest` for the deferred-throw behavior.
+
+**Deliberately not done:**
+
+- **`AwsSigV4Signer` was not migrated to `AwsV4HttpSigner`.** The source report frames Finding 4 as
+  "worth doing at the same time as Finding 1, since that code is already being rewritten" —
+  referring to `SigV4ClientRequestFilter`, which was rewritten. `AwsSigV4Signer` was touched for
+  Findings 2/3 but not rewritten wholesale; migrating its signer implementation too would have
+  multiplied the risk surface across all 7 call sites for a low-priority, purely cosmetic change
+  (both signers work correctly today; `Aws4Signer` is deprecated but not yet removed).
+- **The "exclude `Authorization` from signed headers" smaller note does not apply to either file
+  as currently structured.** Neither `SigV4ClientRequestFilter` nor `AwsSigV4Signer` ever copies
+  the caller's pre-existing request headers into the bytes being signed — both build the signing
+  input from scratch with only `Content-Type` (and, in `AwsSigV4Signer`, explicit `extraHeaders`
+  the caller passes in for that specific call, e.g. `X-Amz-Target`). There is no vector today for a
+  stale `Authorization` header to be folded into a new signature. Re-confirmed by reading both
+  `filter()`/`sign()` methods directly rather than assuming the note transfers unchanged from the
+  reference filter it was originally written against.
+- **The `EcpConfig.getRegion()` `us-east-1` default was left alone.** It is a general CLI
+  configuration default (documented, intentional), not the SigV4-signing-region silent fallback
+  the smaller note warns about — that fallback only existed in `SigV4ClientRequestFilter` and has
+  been removed there.
+
+**Verification performed beyond unit tests:**
+
+- Full repo `./build-local.sh --skip-tests` (all 11 modules) and `mvn test` (all 11 modules,
+  0 failures) after both commits.
+- Native `ecp-cli` build (`./build-local.sh --only cli --native --skip-tests`) succeeds — confirms
+  no GraalVM native-image reflection issues from the changed signer internals.
+- Ran the native binary directly with `AWS_PROFILE`/`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/
+  `AWS_SESSION_TOKEN` unset and `HOME` pointed at an empty directory: `list-clusters` printed
+  `Failed to reach Express Compute service at https://express-compute.codriverlabs.ai: No AWS
+  credentials found; run 'aws sso login' or set AWS_PROFILE.` — the exact actionable message
+  Finding 3 exists to produce, observed end-to-end in a real binary, not just asserted in a test
+  double.
+- For both the empty-payload bug (Finding 1) and the credential-caching bug (Finding 2), the fix
+  was temporarily reverted, the relevant test was re-run and confirmed to fail with a message
+  pointing at the exact regression, then the fix was restored and the test re-confirmed passing —
+  so the new tests are known to catch the bugs they were written for, not just pass incidentally.
