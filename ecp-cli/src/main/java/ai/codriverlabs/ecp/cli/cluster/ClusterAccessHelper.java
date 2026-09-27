@@ -44,8 +44,7 @@ public final class ClusterAccessHelper {
 
             HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri).GET();
             AwsSigV4Signer signer = AwsSigV4Signer.create(region);
-            if (signer != null) signer.sign(builder, "GET", uri, null, "lambda");
-            else builder.header("Content-Type", "application/json");
+            signer.sign(builder, "GET", uri, null, "lambda");
 
             HttpResponse<String> response = HttpClient.newHttpClient()
                 .send(builder.build(), HttpResponse.BodyHandlers.ofString());
@@ -102,8 +101,6 @@ public final class ClusterAccessHelper {
 
             HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri);
             AwsSigV4Signer signer = AwsSigV4Signer.create(region);
-            if (signer == null) return null;
-
             signer.sign(builder, "POST", uri, body, "secretsmanager",
                 "application/x-amz-json-1.1",
                 java.util.Map.of("X-Amz-Target", "secretsmanager.GetSecretValue"));

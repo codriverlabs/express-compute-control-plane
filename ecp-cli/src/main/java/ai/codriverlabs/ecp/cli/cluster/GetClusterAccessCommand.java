@@ -72,8 +72,7 @@ public class GetClusterAccessCommand implements Runnable {
 
             HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri).GET();
             AwsSigV4Signer signer = AwsSigV4Signer.create(resolvedRegion);
-            if (signer != null) signer.sign(builder, "GET", uri, null, "lambda");
-            else builder.header("Content-Type", "application/json");
+            signer.sign(builder, "GET", uri, null, "lambda");
 
             HttpResponse<String> response = HttpClient.newHttpClient()
                 .send(builder.build(), HttpResponse.BodyHandlers.ofString());
@@ -183,10 +182,6 @@ public class GetClusterAccessCommand implements Runnable {
 
         HttpRequest.Builder builder = HttpRequest.newBuilder().uri(uri);
         AwsSigV4Signer signer = AwsSigV4Signer.create(resolvedRegion);
-        if (signer == null) {
-            System.err.println("Error: no AWS credentials available to fetch SSH key");
-            System.exit(1);
-        }
         signer.sign(builder, "POST", uri, body, "secretsmanager",
             "application/x-amz-json-1.1",
             java.util.Map.of("X-Amz-Target", "secretsmanager.GetSecretValue"));

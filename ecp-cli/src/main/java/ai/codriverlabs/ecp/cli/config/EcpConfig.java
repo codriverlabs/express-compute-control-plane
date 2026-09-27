@@ -117,7 +117,6 @@ public class EcpConfig {
         try {
             String region = getRegion();
             AwsSigV4Signer signer = AwsSigV4Signer.create(region);
-            if (signer == null) return null;
 
             String body = "{\"Name\":\"" + paramName + "\",\"WithDecryption\":false}";
             URI uri = URI.create("https://ssm." + region + ".amazonaws.com/");
