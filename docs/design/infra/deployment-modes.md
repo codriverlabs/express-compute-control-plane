@@ -115,7 +115,9 @@ cdk deploy --context deploymentMode=hybrid
 ### Environment Variable Propagation
 
 When `deployTenantService = false`:
-- `ECP_LT_*` and `ECP_VPC_ID` are not set on any Lambda
+- `EXPRESS_COMPUTE_VPC_ID` is not set on any Lambda (launch template/AMI IDs are never
+  injected as env vars regardless of mode — TenantProvisioningService/TenantEc2Service
+  read them at runtime via SSM, and neither runs in self-managed mode anyway)
 - `ECP_TENANTS_TABLE` is not set
 - `ECP_KMS_CA_KEY_ID` is not set
 

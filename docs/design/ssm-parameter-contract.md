@@ -1,33 +1,53 @@
-# SSM Parameter Contract: ecp-infra → ecp-control-plane
+# SSM Parameter Contract: express-compute-managed-k8s-infra → ecp-control-plane
 
-Terraform (in `ecp-infra`) writes these SSM parameters per region.
-CDK (in `ecp-control-plane`) reads them at deploy time via `StringParameter.valueForStringParameter()`.
+The `express-compute-managed-k8s-infra` CDK stack (and the AMI-publishing pipeline in
+`express-compute-platform`) write these SSM parameters per region. The control plane
+reads the shared VPC ID via CDK at deploy time (`StringParameter.valueForStringParameter()`);
+AMI and launch template IDs are read by the tenant-service Lambda at **runtime** via the AWS SDK
+(`ssm:GetParameter`), not resolved by CDK at synth time — this lets both distributions (`eks-d`,
+`k3s`) share one lookup code path (`InfraNaming.ssmAmiPath`/`ssmLaunchTemplatePath`).
 
-**Deploy order**: Terraform first → CDK second.
+**Deploy order**: shared infra stack first → control plane stack second.
 
 ## Design Principles
 
 1. **Region-scoped** — SSM Parameter Store is regional. Same paths, different values per region.
 2. **Hierarchical paths** — supports `get-parameters-by-path` for discovery and listing.
-3. **Consistent structure** — `/{project}/{scope}/{resource-type}/{arch}/{variant}`
+3. **Distribution-prefixed** — every AMI and launch template path includes the distribution
+   segment (`eks-d` or `k3s`). There is no unprefixed path for either distribution.
 
 ## Parameter Hierarchy
 
 ```
 /express-compute/
-├── infra/                              ← written by express-compute-infra CDK stack
+├── infra/                              ← written by express-compute-managed-k8s-infra CDK stack
+│   │                                     and the AMI-publishing pipeline (express-compute-platform)
 │   ├── ami/
-│   │   ├── arm64/
-│   │   │   └── 1.35              → ami-0aaa111
-│   │   └── x86_64/
-│   │       └── 1.35              → ami-0bbb222
+│   │   ├── eks-d/
+│   │   │   ├── arm64/
+│   │   │   │   └── 1.35          → ami-0aaa111
+│   │   │   └── x86_64/
+│   │   │       └── 1.35          → ami-0bbb222
+│   │   └── k3s/
+│   │       ├── arm64/
+│   │       │   └── 1.35          → ami-0eee555
+│   │       └── x86_64/
+│   │           └── 1.35          → ami-0fff666
 │   ├── launch-template/
-│   │   ├── arm64/
-│   │   │   ├── ondemand          → lt-0aaa111
-│   │   │   └── spot              → lt-0bbb222
-│   │   └── x86_64/
-│   │       ├── ondemand          → lt-0ccc333
-│   │       └── spot              → lt-0ddd444
+│   │   ├── eks-d/
+│   │   │   ├── arm64/
+│   │   │   │   ├── ondemand      → lt-0aaa111
+│   │   │   │   └── spot          → lt-0bbb222
+│   │   │   └── x86_64/
+│   │   │       ├── ondemand      → lt-0ccc333
+│   │   │       └── spot          → lt-0ddd444
+│   │   └── k3s/
+│   │       ├── arm64/
+│   │       │   ├── ondemand      → lt-0ggg777
+│   │       │   └── spot          → lt-0hhh888
+│   │       └── x86_64/
+│   │           ├── ondemand      → lt-0iii999
+│   │           └── spot          → lt-0jjj000
 │   └── network/
 │       └── vpc-id                → vpc-0abc123
 └── control-plane/                      ← written by express-compute-control-plane CDK stack
@@ -40,13 +60,19 @@ CDK (in `ecp-control-plane`) reads them at deploy time via `StringParameter.valu
 ## Discovery via get-parameters-by-path
 
 ```bash
-# All AMIs for arm64 (all k8s versions)
-aws ssm get-parameters-by-path --path /express-compute/infra/ami/arm64
+# All EKS-D AMIs for arm64 (all k8s versions)
+aws ssm get-parameters-by-path --path /express-compute/infra/ami/eks-d/arm64
 
-# All launch templates for arm64 (spot + ondemand)
-aws ssm get-parameters-by-path --path /express-compute/infra/launch-template/arm64
+# All k3s AMIs for arm64 (all k8s versions)
+aws ssm get-parameters-by-path --path /express-compute/infra/ami/k3s/arm64
 
-# All launch templates (all arches, all types)
+# All AMIs (both distributions, all arches)
+aws ssm get-parameters-by-path --path /express-compute/infra/ami --recursive
+
+# All launch templates for EKS-D arm64 (spot + ondemand)
+aws ssm get-parameters-by-path --path /express-compute/infra/launch-template/eks-d/arm64
+
+# All launch templates (all distributions, all arches, all types)
 aws ssm get-parameters-by-path --path /express-compute/infra/launch-template --recursive
 
 # All network params
@@ -55,21 +81,29 @@ aws ssm get-parameters-by-path --path /express-compute/infra/network
 
 ## Full Parameter List
 
-### AMIs (per arch, per k8s version)
+### AMIs (per distribution, per arch, per k8s version)
+
+All AMI paths are distribution-prefixed — there is no unprefixed path.
 
 | SSM Path | Type | Description |
 |----------|------|-------------|
-| `/express-compute/infra/ami/arm64/{k8s-version}` | `String` | Region-specific AMI for arm64 k3s nodes |
-| `/express-compute/infra/ami/x86_64/{k8s-version}` | `String` | Region-specific AMI for x86_64 k3s nodes |
+| `/express-compute/infra/ami/eks-d/{arch}/{k8s-version}` | `String` | Region-specific AMI for EKS-D nodes |
+| `/express-compute/infra/ami/k3s/{arch}/{k8s-version}` | `String` | Region-specific AMI for k3s nodes |
 
-### Launch Templates (per arch, per pricing model)
+### Launch Templates (per distribution, per arch, per pricing model)
+
+All launch template paths are distribution-prefixed — there is no unprefixed path.
 
 | SSM Path | Type | Description |
 |----------|------|-------------|
-| `/express-compute/infra/launch-template/arm64/ondemand` | `String` | LT: arm64 on-demand instances |
-| `/express-compute/infra/launch-template/arm64/spot` | `String` | LT: arm64 spot instances |
-| `/express-compute/infra/launch-template/x86_64/ondemand` | `String` | LT: x86_64 on-demand instances |
-| `/express-compute/infra/launch-template/x86_64/spot` | `String` | LT: x86_64 spot instances |
+| `/express-compute/infra/launch-template/eks-d/arm64/ondemand` | `String` | LT: EKS-D arm64 on-demand instances |
+| `/express-compute/infra/launch-template/eks-d/arm64/spot` | `String` | LT: EKS-D arm64 spot instances |
+| `/express-compute/infra/launch-template/eks-d/x86_64/ondemand` | `String` | LT: EKS-D x86_64 on-demand instances |
+| `/express-compute/infra/launch-template/eks-d/x86_64/spot` | `String` | LT: EKS-D x86_64 spot instances |
+| `/express-compute/infra/launch-template/k3s/arm64/ondemand` | `String` | LT: k3s arm64 on-demand instances |
+| `/express-compute/infra/launch-template/k3s/arm64/spot` | `String` | LT: k3s arm64 spot instances |
+| `/express-compute/infra/launch-template/k3s/x86_64/ondemand` | `String` | LT: k3s x86_64 on-demand instances |
+| `/express-compute/infra/launch-template/k3s/x86_64/spot` | `String` | LT: k3s x86_64 spot instances |
 
 ### Network
 
@@ -80,95 +114,41 @@ aws ssm get-parameters-by-path --path /express-compute/infra/network
 | `/express-compute/infra/network/private-subnet-ids` | `StringList` | Private subnets (tenant nodes) |
 | `/express-compute/infra/network/security-group-id` | `String` | SG for tenant k3s nodes |
 
-## Terraform Implementation
+## Actual Implementation
 
-```hcl
-variable "k8s_version" {
-  default = "1.35"
-}
+The parameters above are **not** written by Terraform — they are published by:
 
-# --- AMIs (per arch, per k8s version) ---
+- **Launch templates** — `express-compute-managed-k8s-infra` (Java CDK):
+  `ExpressComputeManagedK8sInfraStack.java`, `createLaunchTemplates()` /
+  `createK3sLaunchTemplates()` methods.
+- **AMI IDs and signatures** — `express-compute-platform`: the Packer post-processors
+  in `ami-builder/ecp-golden-ami.pkr.hcl` (EKS-D) and `ami-builder/k3s-xpress.pkr.hcl`
+  (k3s) publish the AMI ID directly; `ami-builder/scripts/sign-ami.sh` publishes the
+  signature. `bundle/deploy.sh`'s `register_amis` and `ami-builder/scripts/import-ami.sh`
+  handle re-publishing to additional regions.
 
-resource "aws_ssm_parameter" "ami_arm64" {
-  name  = "/express-compute/infra/ami/arm64/${var.k8s_version}"
-  type  = "String"
-  value = aws_ami_copy.k3s_arm64.id
-}
-
-resource "aws_ssm_parameter" "ami_x86" {
-  name  = "/express-compute/infra/ami/x86_64/${var.k8s_version}"
-  type  = "String"
-  value = aws_ami_copy.k3s_x86.id
-}
-
-# --- Launch Templates (per arch, per pricing) ---
-
-resource "aws_ssm_parameter" "lt_arm64_ondemand" {
-  name  = "/express-compute/infra/launch-template/arm64/ondemand"
-  type  = "String"
-  value = aws_launch_template.arm64_ondemand.id
-}
-
-resource "aws_ssm_parameter" "lt_arm64_spot" {
-  name  = "/express-compute/infra/launch-template/arm64/spot"
-  type  = "String"
-  value = aws_launch_template.arm64_spot.id
-}
-
-resource "aws_ssm_parameter" "lt_x86_ondemand" {
-  name  = "/express-compute/infra/launch-template/x86_64/ondemand"
-  type  = "String"
-  value = aws_launch_template.x86_ondemand.id
-}
-
-resource "aws_ssm_parameter" "lt_x86_spot" {
-  name  = "/express-compute/infra/launch-template/x86_64/spot"
-  type  = "String"
-  value = aws_launch_template.x86_spot.id
-}
-
-# --- Network ---
-
-resource "aws_ssm_parameter" "vpc_id" {
-  name  = "/express-compute/infra/network/vpc-id"
-  type  = "String"
-  value = aws_vpc.eks_dx.id
-}
-
-resource "aws_ssm_parameter" "public_subnet_ids" {
-  name  = "/express-compute/infra/network/public-subnet-ids"
-  type  = "StringList"
-  value = join(",", aws_subnet.public[*].id)
-}
-
-resource "aws_ssm_parameter" "private_subnet_ids" {
-  name  = "/express-compute/infra/network/private-subnet-ids"
-  type  = "StringList"
-  value = join(",", aws_subnet.private[*].id)
-}
-
-resource "aws_ssm_parameter" "security_group_id" {
-  name  = "/express-compute/infra/network/security-group-id"
-  type  = "String"
-  value = aws_security_group.tenant_nodes.id
-}
-```
+See those repos' own docs (`docs/design/k3s-cli-and-ssm-contract.md` in
+`express-compute-platform`) for the authoritative parameter-writing code — this file
+documents the contract from the consuming (control plane) side, not the implementation.
 
 ## CDK Consumer
 
 ```java
-// Launch templates — tenant service selects at runtime based on request
-String ltArm64Ondemand = StringParameter.valueForStringParameter(this, "/express-compute/infra/launch-template/arm64/ondemand");
-String ltArm64Spot = StringParameter.valueForStringParameter(this, "/express-compute/infra/launch-template/arm64/spot");
-String ltX86Ondemand = StringParameter.valueForStringParameter(this, "/express-compute/infra/launch-template/x86_64/ondemand");
-String ltX86Spot = StringParameter.valueForStringParameter(this, "/express-compute/infra/launch-template/x86_64/spot");
+// Launch template IDs are NOT resolved at CDK synth time. TenantProvisioningService
+// resolves them at runtime via SSM (InfraNaming.ssmLaunchTemplatePath(distribution, arch,
+// pricing)) for both eks-d and k3s — the same mechanism AMI lookup already uses. This
+// keeps both distributions on one code path instead of a synth-time/runtime split.
+
+// The one param the control plane stack still resolves at synth time is the shared VPC:
+String vpcId = StringParameter.valueForStringParameter(this, "/express-compute/infra/network/vpc-id");
 
 // Network
 String subnetIds = StringParameter.valueForStringParameter(this, "/express-compute/infra/network/private-subnet-ids");
 ```
 
-Note: AMIs are not consumed by CDK directly — the launch templates already reference them.
-The tenant-service Lambda can also read AMI params at runtime via SDK if it needs version selection.
+Note: AMIs and launch templates are read by the tenant-service Lambda at runtime via the AWS SDK
+(`ssm:GetParameter`), not resolved by CDK at synth time. The Lambda's IAM role has
+`ssm:GetParameter` scoped to `/express-compute/infra/ami/*` and `/express-compute/infra/launch-template/*`.
 
 ## Multi-Region Deployment
 
@@ -176,10 +156,10 @@ The tenant-service Lambda can also read AMI params at runtime via SDK if it need
 Source Region (us-east-1)              Target Region (eu-west-1)
 ─────────────────────────              ─────────────────────────
 Packer → AMI (ami-src-111)    ──copy──► AMI (ami-tgt-222)
-Terraform:                             Terraform:
-  /express-compute/infra/ami/arm64/1.35 = ami-src       /express-compute/infra/ami/arm64/1.35 = ami-tgt
-  /express-compute/infra/launch-template/...            /express-compute/infra/launch-template/...
-  /express-compute/infra/network/...                    /express-compute/infra/network/...
+import-ami.sh publishes:               import-ami.sh publishes:
+  /express-compute/infra/ami/eks-d/arm64/1.35 = ami-src    /express-compute/infra/ami/eks-d/arm64/1.35 = ami-tgt
+  /express-compute/infra/launch-template/...               /express-compute/infra/launch-template/...
+  /express-compute/infra/network/...                        /express-compute/infra/network/...
 ```
 
 ## Notes

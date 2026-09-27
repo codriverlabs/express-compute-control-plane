@@ -54,31 +54,28 @@ Add k3s SSM path resolution:
 public final class InfraNaming {
     // ... existing ...
 
-    /**
-     * SSM path for AMI lookup. k3s uses a /k3s/ prefix; EKS-D uses the legacy path.
-     */
+    /** Legacy AMI path — kept only for reference; no longer called by any code. */
     public static String ssmAmiPath(String arch, String k8sVersion) {
         return SSM_PREFIX + "/ami/" + arch + "/" + k8sVersion;
     }
 
-    /** NEW — distribution-aware AMI lookup. */
-    public static String ssmAmiPath(String distribution, String arch, String k8sVersion) {
-        if ("k3s".equals(distribution)) {
-            return SSM_PREFIX + "/ami/k3s/" + arch + "/" + k8sVersion;
-        }
-        // EKS-D legacy path (no distribution prefix)
-        return SSM_PREFIX + "/ami/" + arch + "/" + k8sVersion;
+    /** Distribution-aware AMI lookup. Always prefixed — no legacy fallback. */
+    public static String ssmAmiPath(Distribution distribution, String arch, String k8sVersion) {
+        return SSM_PREFIX + "/ami/" + distribution.ssmSegment() + "/" + arch + "/" + k8sVersion;
     }
 
-    /** NEW — distribution-aware launch template lookup. */
-    public static String ssmLaunchTemplatePath(String distribution, String arch, String pricing) {
-        if ("k3s".equals(distribution)) {
-            return SSM_PREFIX + "/launch-template/k3s/" + arch + "/" + pricing;
-        }
-        return SSM_PREFIX + "/launch-template/" + arch + "/" + pricing;
+    /** Distribution-aware launch template lookup. Always prefixed — no legacy fallback. */
+    public static String ssmLaunchTemplatePath(Distribution distribution, String arch, String pricing) {
+        return SSM_PREFIX + "/launch-template/" + distribution.ssmSegment() + "/" + arch + "/" + pricing;
     }
 }
 ```
+
+> **Note:** an earlier version of this plan had EKS-D fall back to an unprefixed path
+> (`/express-compute/infra/ami/{arch}/{k8s-version}`, no distribution segment). That
+> path is no longer published by `express-compute-platform` or `express-compute-managed-k8s-infra`
+> — both distributions are always prefixed. `ssmAmiPath(String, String)` above is dead
+> code kept only so the history of the naming decision is visible in the source.
 
 ---
 
