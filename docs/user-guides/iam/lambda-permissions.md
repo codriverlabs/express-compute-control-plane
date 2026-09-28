@@ -157,7 +157,7 @@ Orchestrates full cluster lifecycle: provisioning, PKI generation, network, IAM,
 
 | Permission | Resource Scope | Reason |
 |-----------|---------------|--------|
-| `ssm:GetParameter` | `/express-compute/control-plane/*`, `/express-compute/infra/ami/*` | Read API endpoint, AMI IDs at runtime |
+| `ssm:GetParameter` | `/express-compute/control-plane/*`, `/express-compute/infra/ami/*`, `/express-compute/infra/launch-template/*` | Read API endpoint, AMI IDs, and launch template IDs at runtime (both eks-d and k3s) |
 
 ---
 

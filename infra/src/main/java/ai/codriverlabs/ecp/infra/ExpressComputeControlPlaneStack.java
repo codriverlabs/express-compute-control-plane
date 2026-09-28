@@ -155,18 +155,13 @@ public class ExpressComputeControlPlaneStack extends Stack {
 
         // -----------------------------------------------------------------------
         // SSM Parameter lookups (written by express-compute/infra stack)
-        // Only required for managed/hybrid modes (tenant provisioning needs VPC + launch templates)
+        // Only required for managed/hybrid modes (tenant provisioning needs the shared VPC).
+        // Launch template IDs are resolved at runtime by TenantProvisioningService via
+        // InfraNaming.ssmLaunchTemplatePath(distribution, arch, pricing) for both
+        // distributions (eks-d and k3s) — not injected as env vars at synth time.
         // -----------------------------------------------------------------------
-        String ltArm64Ondemand = null, ltArm64Spot = null, ltX86Ondemand = null, ltX86Spot = null, vpcId = null;
+        String vpcId = null;
         if (deployTenantService) {
-            ltArm64Ondemand = StringParameter.valueForStringParameter(
-                this, "/express-compute/infra/launch-template/arm64/ondemand");
-            ltArm64Spot = StringParameter.valueForStringParameter(
-                this, "/express-compute/infra/launch-template/arm64/spot");
-            ltX86Ondemand = StringParameter.valueForStringParameter(
-                this, "/express-compute/infra/launch-template/x86_64/ondemand");
-            ltX86Spot = StringParameter.valueForStringParameter(
-                this, "/express-compute/infra/launch-template/x86_64/spot");
             vpcId = StringParameter.valueForStringParameter(
                 this, "/express-compute/infra/network/vpc-id");
         }
@@ -354,10 +349,6 @@ public class ExpressComputeControlPlaneStack extends Stack {
                 .environment(java.util.Map.ofEntries(
                     Map.entry("EXPRESS_COMPUTE_TENANTS_TABLE", tenantsTable.getTableName()),
                     Map.entry("EXPRESS_COMPUTE_CLUSTERS_TABLE", clustersTable.getTableName()),
-                    Map.entry("EXPRESS_COMPUTE_LT_ARM64_ONDEMAND", ltArm64Ondemand),
-                    Map.entry("EXPRESS_COMPUTE_LT_ARM64_SPOT", ltArm64Spot),
-                    Map.entry("EXPRESS_COMPUTE_LT_X86_ONDEMAND", ltX86Ondemand),
-                    Map.entry("EXPRESS_COMPUTE_LT_X86_SPOT", ltX86Spot),
                     Map.entry("EXPRESS_COMPUTE_VPC_ID", vpcId),
                     Map.entry("EXPRESS_COMPUTE_KMS_CA_KEY_ID", caSigningKey.getKeyId()),
                     Map.entry("EXPRESS_COMPUTE_AVAILABILITY_ZONE", "auto"),

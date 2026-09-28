@@ -125,8 +125,8 @@ GET    /tenants/{id}/stream    # SSE progress (Function URL)
 Infrastructure writes, Lambda reads at runtime:
 
 ```
-/express-compute/infra/launch-template/{arch}/{spot|ondemand}  # Launch template IDs
-/express-compute/infra/ami/{arch}/{k8s-version}                # AMI IDs (region-specific)
+/express-compute/infra/launch-template/{eks-d|k3s}/{arch}/{spot|ondemand}  # Launch template IDs
+/express-compute/infra/ami/{eks-d|k3s}/{arch}/{k8s-version}               # AMI IDs (region-specific)
 /express-compute/infra/network/vpc-id                          # VPC
 /express-compute/control-plane/api/endpoint                    # API Gateway URL
 /express-compute/control-plane/quota/max-tenants-per-caller    # Quota (default: 1)
@@ -141,12 +141,12 @@ See `docs/design/ssm-parameter-contract.md` for full details.
 | `ECP_CLUSTERS_TABLE` | credential, mgmt | DynamoDB clusters table |
 | `ECP_ASSOCIATIONS_TABLE` | credential, mgmt | DynamoDB associations table |
 | `ECP_TENANTS_TABLE` | tenant | DynamoDB tenants table |
-| `ECP_LT_ARM64_ONDEMAND` | tenant | Launch template ID |
-| `ECP_LT_ARM64_SPOT` | tenant | Launch template ID |
-| `ECP_LT_X86_ONDEMAND` | tenant | Launch template ID |
-| `ECP_LT_X86_SPOT` | tenant | Launch template ID |
 | `ECP_VPC_ID` | tenant | VPC for tenant resources |
 | `ECP_ENDPOINT` | auth-proxy, tenant | API Gateway URL |
+
+Launch template and AMI IDs are **not** injected as environment variables — the
+tenant-service Lambda reads them at runtime via `ssm:GetParameter`
+(`InfraNaming.ssmAmiPath`/`ssmLaunchTemplatePath`), for both `eks-d` and `k3s`.
 
 ## Documentation
 

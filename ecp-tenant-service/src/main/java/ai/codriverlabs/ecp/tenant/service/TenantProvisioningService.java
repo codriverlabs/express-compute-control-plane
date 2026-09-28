@@ -101,18 +101,6 @@ public class TenantProvisioningService {
     @ConfigProperty(name = "express-compute.clusters-table")
     String clustersTable;
 
-    @ConfigProperty(name = "express-compute.tenant.lt-arm64-ondemand")
-    String ltArm64Ondemand;
-
-    @ConfigProperty(name = "express-compute.tenant.lt-arm64-spot")
-    String ltArm64Spot;
-
-    @ConfigProperty(name = "express-compute.tenant.lt-x86-ondemand")
-    String ltX86Ondemand;
-
-    @ConfigProperty(name = "express-compute.tenant.lt-x86-spot")
-    String ltX86Spot;
-
     @ConfigProperty(name = "express-compute.tenant.vpc-id")
     String vpcId;
 
@@ -937,20 +925,9 @@ public class TenantProvisioningService {
     }
 
     private String resolveLaunchTemplate(Distribution distribution, String arch, String pricingModel) {
-        if (distribution == Distribution.K3S) {
-            // k3s launch templates are at a different SSM path — resolve at runtime
-            String ssmPath = InfraNaming.ssmLaunchTemplatePath(distribution, arch, pricingModel);
-            return ssm.getParameter(software.amazon.awssdk.services.ssm.model.GetParameterRequest.builder()
-                .name(ssmPath).build()).parameter().value();
-        }
-        // EKS-D: use pre-resolved config properties (legacy path)
-        return switch (arch + "/" + pricingModel) {
-            case "arm64/ondemand" -> ltArm64Ondemand;
-            case "arm64/spot" -> ltArm64Spot;
-            case "x86_64/ondemand" -> ltX86Ondemand;
-            case "x86_64/spot" -> ltX86Spot;
-            default -> throw new IllegalArgumentException("Invalid arch/pricing: " + arch + "/" + pricingModel);
-        };
+        String ssmPath = InfraNaming.ssmLaunchTemplatePath(distribution, arch, pricingModel);
+        return ssm.getParameter(software.amazon.awssdk.services.ssm.model.GetParameterRequest.builder()
+            .name(ssmPath).build()).parameter().value();
     }
 
     // -------------------------------------------------------------------------

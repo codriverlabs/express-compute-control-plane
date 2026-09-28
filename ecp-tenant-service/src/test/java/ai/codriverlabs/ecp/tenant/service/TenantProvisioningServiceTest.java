@@ -382,6 +382,78 @@ class TenantProvisioningServiceTest {
             .thenReturn(GetItemResponse.builder().item(item).build());
     }
 
+    // -------------------------------------------------------------------------
+    // Launch template resolution — regression coverage for the SSM path
+    // unification bug (docs/design/ssm-parameter-contract.md): EKS-D previously
+    // resolved launch templates from CDK-synth-time-injected config properties
+    // pointing at an unprefixed SSM path that was removed when the platform
+    // standardized on distribution-prefixed paths for both distributions. This
+    // pins that both eks-d and k3s now resolve via the same runtime SSM lookup.
+    // -------------------------------------------------------------------------
+
+    @Mock software.amazon.awssdk.services.ssm.SsmClient ssm;
+
+    @Test
+    void resolveLaunchTemplate_eksD_readsFromDistributionPrefixedSsmPath() throws Exception {
+        setField("ssm", ssm);
+        when(ssm.getParameter(any(software.amazon.awssdk.services.ssm.model.GetParameterRequest.class)))
+            .thenReturn(software.amazon.awssdk.services.ssm.model.GetParameterResponse.builder()
+                .parameter(software.amazon.awssdk.services.ssm.model.Parameter.builder()
+                    .value("lt-eksd-arm64-spot").build())
+                .build());
+
+        String result = invokeResolveLaunchTemplate(Distribution.EKS_D, "arm64", "spot");
+
+        assertEquals("lt-eksd-arm64-spot", result);
+        ArgumentCaptor<software.amazon.awssdk.services.ssm.model.GetParameterRequest> cap =
+            ArgumentCaptor.forClass(software.amazon.awssdk.services.ssm.model.GetParameterRequest.class);
+        verify(ssm).getParameter(cap.capture());
+        assertEquals("/express-compute/infra/launch-template/eks-d/arm64/spot", cap.getValue().name());
+    }
+
+    @Test
+    void resolveLaunchTemplate_k3s_readsFromDistributionPrefixedSsmPath() throws Exception {
+        setField("ssm", ssm);
+        when(ssm.getParameter(any(software.amazon.awssdk.services.ssm.model.GetParameterRequest.class)))
+            .thenReturn(software.amazon.awssdk.services.ssm.model.GetParameterResponse.builder()
+                .parameter(software.amazon.awssdk.services.ssm.model.Parameter.builder()
+                    .value("lt-k3s-arm64-spot").build())
+                .build());
+
+        String result = invokeResolveLaunchTemplate(Distribution.K3S, "arm64", "spot");
+
+        assertEquals("lt-k3s-arm64-spot", result);
+        ArgumentCaptor<software.amazon.awssdk.services.ssm.model.GetParameterRequest> cap =
+            ArgumentCaptor.forClass(software.amazon.awssdk.services.ssm.model.GetParameterRequest.class);
+        verify(ssm).getParameter(cap.capture());
+        assertEquals("/express-compute/infra/launch-template/k3s/arm64/spot", cap.getValue().name());
+    }
+
+    @Test
+    void resolveLaunchTemplate_eksD_and_k3s_useTheSameCodePath_notASpecialCase() throws Exception {
+        // Both distributions must hit ssm.getParameter() exactly once -- neither should
+        // fall through to a pre-resolved field/env-var lookup.
+        setField("ssm", ssm);
+        when(ssm.getParameter(any(software.amazon.awssdk.services.ssm.model.GetParameterRequest.class)))
+            .thenReturn(software.amazon.awssdk.services.ssm.model.GetParameterResponse.builder()
+                .parameter(software.amazon.awssdk.services.ssm.model.Parameter.builder()
+                    .value("lt-x").build())
+                .build());
+
+        invokeResolveLaunchTemplate(Distribution.EKS_D, "x86_64", "ondemand");
+        invokeResolveLaunchTemplate(Distribution.K3S, "x86_64", "ondemand");
+
+        verify(ssm, times(2)).getParameter(any(software.amazon.awssdk.services.ssm.model.GetParameterRequest.class));
+    }
+
+    private String invokeResolveLaunchTemplate(Distribution distribution, String arch, String pricingModel)
+            throws Exception {
+        var method = TenantProvisioningService.class.getDeclaredMethod(
+            "resolveLaunchTemplate", Distribution.class, String.class, String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(service, distribution, arch, pricingModel);
+    }
+
     private void setField(String name, Object value) throws Exception {
         Field f = TenantProvisioningService.class.getDeclaredField(name);
         f.setAccessible(true);
