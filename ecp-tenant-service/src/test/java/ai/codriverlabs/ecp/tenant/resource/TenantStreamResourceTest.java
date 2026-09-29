@@ -105,6 +105,65 @@ class TenantStreamResourceTest {
     }
 
     @Test
+    void validateAndPersist_acceptsK3sStartingState() throws Exception {
+        when(provisioningService.getProgress("tenant-1"))
+            .thenReturn(new TenantProgress("provisioning", "k3s configuration written", 18, null, 0, null, null));
+
+        ProgressMessage msg = new ProgressMessage("tenant-1", "k3s-starting", "Starting k3s server", 20);
+        TenantProgress result = invokeValidateAndPersist("tenant-1", msg);
+
+        assertNotNull(result, "k3s-starting must be accepted -- it is a real progress "
+            + "signal from setup-k3s-xpress.sh, not an invalid/unknown state");
+        assertEquals("k3s-starting", result.state());
+        assertEquals(20, result.progress());
+        verify(provisioningService).updateProgressFromSqs("tenant-1", "k3s-starting", "Starting k3s server", 20);
+    }
+
+    @Test
+    void validateAndPersist_acceptsK3sReadyState() throws Exception {
+        when(provisioningService.getProgress("tenant-1"))
+            .thenReturn(new TenantProgress("k3s-starting", "Starting k3s server", 20, null, 0, null, null));
+
+        ProgressMessage msg = new ProgressMessage("tenant-1", "k3s-ready", "k3s server running", 35);
+        TenantProgress result = invokeValidateAndPersist("tenant-1", msg);
+
+        assertNotNull(result, "k3s-ready must be accepted -- it means the k3s server "
+            + "process started, not that the cluster is fully provisioned");
+        assertEquals("k3s-ready", result.state());
+        assertEquals(35, result.progress());
+        verify(provisioningService).updateProgressFromSqs("tenant-1", "k3s-ready", "k3s server running", 35);
+    }
+
+    @Test
+    void validateAndPersist_k3sReadyIsNotTreatedAsTerminal() throws Exception {
+        // "k3s-ready" (35%) means the k3s server process started -- it must NOT be treated
+        // as the terminal cluster-ready signal. Only the generic "ready" state (100%, sent
+        // separately by report_ready() at the end of the boot script) is terminal. Mistakenly
+        // treating k3s-ready as terminal would delete the progress queue at 35% and drop all
+        // remaining VPC CNI / add-on / Karpenter progress reporting.
+        String queueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/ecp-tenant-t1-progress.fifo";
+        when(sqs.getQueueUrl(any(GetQueueUrlRequest.class)))
+            .thenReturn(GetQueueUrlResponse.builder().queueUrl(queueUrl).build());
+
+        String k3sReadyMsg = objectMapper.writeValueAsString(
+            new ProgressMessage("t1", "k3s-ready", "k3s server running", 35));
+        when(sqs.receiveMessage(any(ReceiveMessageRequest.class)))
+            .thenReturn(ReceiveMessageResponse.builder()
+                .messages(Message.builder().body(k3sReadyMsg).receiptHandle("rh1").build())
+                .build());
+        when(provisioningService.getProgress("t1"))
+            .thenReturn(new TenantProgress("k3s-starting", "Starting k3s server", 20, null, 0, null, null));
+
+        AtomicBoolean emittedTerminal = new AtomicBoolean(false);
+        List<TenantProgress> results = invokePollProgressQueue("t1", emittedTerminal);
+
+        assertFalse(emittedTerminal.get(), "k3s-ready must not be treated as terminal");
+        assertEquals(1, results.size());
+        assertEquals("k3s-ready", results.getFirst().state());
+        verify(sqs, never()).deleteQueue(any(DeleteQueueRequest.class));
+    }
+
+    @Test
     void validateAndPersist_acceptsTerminalStateRegardlessOfProgress() throws Exception {
         when(provisioningService.getProgress("tenant-1"))
             .thenReturn(new TenantProgress("provisioning", "Installing", 90, null, 0, null, null));
