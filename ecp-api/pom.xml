@@ -78,13 +78,13 @@
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
-      <version>3.0.18</version>
+      <version>4.0.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.inject</groupId>
       <artifactId>jersey-hk2</artifactId>
-      <version>3.0.18</version>
+      <version>4.0.2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
