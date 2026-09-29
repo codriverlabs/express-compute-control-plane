@@ -206,6 +206,7 @@ public class TenantStreamResource {
         return switch (state) {
             case "provisioning", "booting", "pulling-key",
                  "kubeadm-init", "kubeadm-done", "registering",
+                 "k3s-starting", "k3s-ready",
                  "ready", "failed" -> true;
             default -> false;
         };
