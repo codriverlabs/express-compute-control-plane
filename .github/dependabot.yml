@@ -13,6 +13,18 @@ updates:
         patterns: ["software.amazon.awssdk*"]
       aws-cdk:
         patterns: ["software.amazon.awscdk*"]
+    ignore:
+      # Pinned to fabric8 7.x (Jackson 2.x line). kubernetes-server-mock 8.x
+      # requires Jackson 3.x (tools.jackson package), but the actual
+      # kubernetes-client runtime dependency in ecp-karpenter-support comes
+      # transitively via quarkus-kubernetes-client (Quarkus BOM), which is
+      # still on fabric8 6.x/7.x. Bumping the mock alone creates a Jackson
+      # 2.x/3.x split that fails at runtime with NoClassDefFoundError:
+      # tools/jackson/core/JacksonException. Revisit once the Quarkus BOM
+      # ships a quarkus-kubernetes-client that pulls in fabric8 8.x by
+      # default. See docs/design/fixes/dependabot-jersey-and-fabric8-triage.md
+      - dependency-name: "io.fabric8:kubernetes-server-mock"
+        versions: ["8.x"]
 
   - package-ecosystem: docker
     directory: /ecp-auth-proxy/src/main/docker
